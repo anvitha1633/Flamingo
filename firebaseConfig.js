@@ -1,22 +1,32 @@
 // firebaseConfig.js
-// Replace placeholders with your Firebase project's config values from Firebase console
-
 
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import {
+    getAuth,
+    initializeAuth,
+    getReactNativePersistence
+} from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
 
-
+// ✅ Your actual config values
 const firebaseConfig = {
-    apiKey: "<FIREBASE_API_KEY>",
-    authDomain: "<PROJECT>.firebaseapp.com",
-    projectId: "<PROJECT_ID>",
-    storageBucket: "<PROJECT>.appspot.com",
-    messagingSenderId: "<SENDER_ID>",
-    appId: "<APP_ID>"
+    apiKey: "AIzaSyD-MAz6gkwvXeaZatLGjfEfy2naxFZtc1E",
+    authDomain: "atproj-a2634.firebaseapp.com",
+    databaseURL: "https://atproj-a2634-default-rtdb.firebaseio.com",
+    projectId: "atproj-a2634",
+    storageBucket: "atproj-a2634.appspot.com",
+    messagingSenderId: "766446917106",
+    appId: "1:766446917106:web:9f5147ec04aa20f32bc76b"
 };
 
-
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// ✅ Use initializeAuth instead of getAuth for React Native
+const auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+});
+
+const db = getFirestore(app);
+
+export { auth, db };

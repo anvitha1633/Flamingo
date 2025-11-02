@@ -20,6 +20,11 @@ function SignInScreen({ navigation }) {
     async function signIn() {
         try {
             await signInWithEmailAndPassword(auth, email, pass);
+            Alert.alert('Sign in successful');
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'Home' }], // or any screen you want to show after login
+            });
         } catch (e) {
             Alert.alert('Sign in error', e.message);
         }
