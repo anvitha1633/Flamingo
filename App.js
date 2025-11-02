@@ -245,7 +245,7 @@ function ChatScreen() {
         setMessages(prev => [...prev, userMsg]);
 
         try {
-            const res = await fetch('https://eugenie-seminivorous-denisha.ngrok-free.dev/ai-chat', {
+            const res = await fetch('https://flamingo-ctga.onrender.com/ai-chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: input })

@@ -8,3 +8,6 @@ ios
 npm-debug.log
 yarn-error.log
 /web-build
+.cache/
+dist/
+build/
