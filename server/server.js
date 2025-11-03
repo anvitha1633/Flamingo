@@ -95,7 +95,7 @@ app.get("/test-db", async (req, res) => {
 app.get("/test-email", async (req, res) => {
     try {
         await sendEmail({
-            to: "anvishett@gmail.com",
+            to: "anvithashet@gmail.com",
             subject: "💅 Flamingo Test Email (Resend)",
             html: `<p>This is a test email sent using <b>Resend</b>. If you received this, your setup works perfectly! 💖</p>`,
         });
