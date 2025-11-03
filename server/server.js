@@ -6,32 +6,29 @@ const cors = require("cors");
 const fetch = require("node-fetch");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
-const { initializeApp, applicationDefault } = require("firebase-admin/app");
+const { initializeApp, cert, getApps, getApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // --- FIREBASE INIT ---
-initializeApp({
-    credential: applicationDefault(),
-});
-
-// ===================== FIREBASE INIT =====================
 let db;
 try {
+    const serviceAccountPath = path.resolve(__dirname, "atproj-a2634-firebase-adminsdk-s47ao-39ea66e97c.json");
     if (!getApps().length) {
         initializeApp({
-            credential: applicationDefault(),
+            credential: cert(require(serviceAccountPath)),
         });
-        console.log("✅ Firebase initialized successfully.");
+        console.log("✅ Firebase initialized successfully using service account.");
     } else {
         console.log("ℹ️ Firebase app already initialized, reusing existing app.");
     }
     db = getFirestore(getApp());
 } catch (err) {
-    console.error("🔥 Firebase initialization failed:", err.message);
+    console.error("🔥 Firebase initialization failed:", err);
 }
 
 
