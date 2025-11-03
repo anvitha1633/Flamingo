@@ -61,7 +61,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 async function sendEmail({ to, subject, html, text }) {
     try {
         const { data, error } = await resend.emails.send({
-            from: "Flamingo Nails <${process.env.BREVO_EMAIL}>",
+            from: `Flamingo Nails <${process.env.BREVO_EMAIL}>`,
             to,
             subject,
             html,
