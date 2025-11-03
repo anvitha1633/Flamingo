@@ -56,11 +56,11 @@ try {
 }
 
 // --- RESEND INIT ---
-const resend = new Resend(process.env.RESEND_API_KEY);
+//const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function sendEmail({ to, subject, html, text }) {
     try {
-        const { data, error } = await resend.emails.send({
+        const info = await transporter.sendMail({
             from: `Flamingo Nails <${process.env.BREVO_EMAIL}>`,
             to,
             subject,
