@@ -12,6 +12,14 @@ import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
 
+const transporter = nodemailer.createTransport({
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    auth: {
+        user: process.env.BREVO_EMAIL,
+        pass: process.env.BREVO_API_KEY,
+    },
+});
 
 const app = express();
 app.use(cors());
@@ -53,7 +61,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 async function sendEmail({ to, subject, html, text }) {
     try {
         const { data, error } = await resend.emails.send({
-            from: "Flamingo Nails <onboarding@resend.dev>",
+            from: "Flamingo Nails <${process.env.BREVO_EMAIL}>",
             to,
             subject,
             html,
