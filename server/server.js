@@ -1,31 +1,46 @@
-require("dotenv").config();
+dotenv.config();
 process.stdout.write("🚀 Server starting...\n");
 
-const express = require("express");
-const cors = require("cors");
-const fetch = require("node-fetch");
-const nodemailer = require("nodemailer");
-const crypto = require("crypto");
-const { initializeApp, cert, getApps, getApp } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
-const path = require("path");
+import express from "express";
+import cors from "cors";
+import fetch from "node-fetch";
+import nodemailer from "nodemailer";
+import crypto from "crypto";
+import path from "path";
+import dotenv from "dotenv";
+import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import fs from "fs";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // --- FIREBASE INIT ---
+import admin from "firebase-admin";
+
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ====== FIREBASE INIT ======
 let db;
 try {
     const serviceAccountPath = path.resolve(__dirname, "atproj-a2634-firebase-adminsdk-s47ao-39ea66e97c.json");
+
+    // ✅ Read and parse the JSON file manually
+    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
+
     if (!getApps().length) {
         initializeApp({
-            credential: cert(require(serviceAccountPath)),
+            credential: cert(serviceAccount),
         });
         console.log("✅ Firebase initialized successfully using service account.");
     } else {
         console.log("ℹ️ Firebase app already initialized, reusing existing app.");
     }
+
     db = getFirestore(getApp());
 } catch (err) {
     console.error("🔥 Firebase initialization failed:", err);
