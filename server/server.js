@@ -29,8 +29,8 @@ let db;
 try {
     const serviceAccountPath = path.resolve(__dirname, "atproj-a2634-firebase-adminsdk-s47ao-39ea66e97c.json");
 
-    // ✅ Read and parse the JSON file manually
-    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
+    // ✅ Load service account from environment variable
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 
     if (!getApps().length) {
         initializeApp({
