@@ -1,3 +1,4 @@
+import dotenv from "dotenv";
 dotenv.config();
 process.stdout.write("🚀 Server starting...\n");
 
@@ -46,28 +47,24 @@ try {
     console.error("🔥 Firebase initialization failed:", err);
 }
 
+// --- RESEND INIT ---
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// ===================== GMAIL TRANSPORTER =====================
-let transporter;
-try {
-    transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-            user: "anvishett@gmail.com",
-            pass: process.env.GMAIL_APP_PASSWORD,
-        },
-    });
-
-    // Test Gmail authentication
-    transporter.verify((error, success) => {
-        if (error) {
-            console.error("❌ Gmail transporter verification failed:", error.message);
-        } else {
-            console.log("✅ Gmail transporter is ready to send messages.");
-        }
-    });
-} catch (err) {
-    console.error("🔥 Nodemailer setup error:", err.message);
+async function sendEmail({ to, subject, html, text }) {
+    try {
+        const { data, error } = await resend.emails.send({
+            from: "Flamingo Nails <no-reply@flamingonails.in>",
+            to,
+            subject,
+            html,
+            text,
+        });
+        if (error) throw new Error(error.message);
+        console.log("✅ Email sent via Resend:", data.id);
+    } catch (err) {
+        console.error("🔥 Email sending failed:", err.message);
+        throw err;
+    }
 }
 
 // --- TEST ROUTE ---
@@ -89,15 +86,13 @@ app.get("/test-db", async (req, res) => {
 // --- EMAIL TEST ROUTE ---
 app.get("/test-email", async (req, res) => {
     try {
-        await transporter.sendMail({
-            from: '"Flamingo Test" <anvishett@gmail.com>',
+        await sendEmail({
             to: "anvishett@gmail.com",
-            subject: "💅 Flamingo Test Email",
-            text: "This is a test email from Flamingo AI backend. Your Gmail app password works!",
+            subject: "💅 Flamingo Test Email (Resend)",
+            html: `<p>This is a test email sent using <b>Resend</b>. If you received this, your setup works perfectly! 💖</p>`,
         });
         res.send("✅ Test email sent successfully!");
     } catch (err) {
-        console.error("🔥 Email sending failed:", err.message);
         res.status(500).send("🔥 Email sending failed");
     }
 });
@@ -200,8 +195,7 @@ app.post("/book", async (req, res) => {
         const confirmUrl = `${process.env.BASE_URL}/confirm-booking/${bookingId}`;
         const rebookUrl = `${process.env.BASE_URL}/rebook/${bookingId}`;
 
-        const staffMail = {
-            from: '"Flamingo Nails AI" <anvishett@gmail.com>',
+        await sendEmail({
             to: "anvishett@gmail.com",
             subject: "💅 New Appointment Booking Request",
             html: `
@@ -212,15 +206,13 @@ app.post("/book", async (req, res) => {
                 <p><b>Time:</b> ${time}</p>
                 <p><b>Email:</b> ${customerEmail}</p>
                 <br/>
-                <p>Please confirm or suggest a new slot:</p>
                 <a href="${confirmUrl}" style="background:#28a745;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">✅ Confirm Booking</a>
                 &nbsp;&nbsp;
                 <a href="${rebookUrl}" style="background:#ffc107;color:#000;padding:10px 20px;border-radius:6px;text-decoration:none;">🕓 Suggest New Time</a>
             `,
-        };
+        });
 
-        await transporter.sendMail(staffMail);
-        res.json({ success: true, message: "Booking email sent to staff!" });
+        res.json({ success: true, message: "Booking email sent to staff via Resend!" });
     } catch (err) {
         console.error("🔥 Booking error:", err);
         res.status(500).json({ error: "Booking failed" });
@@ -238,9 +230,7 @@ app.get("/confirm-booking/:id", async (req, res) => {
 
     await ref.update({ status: "confirmed" });
 
-    // Send confirmation email to customer
-    await transporter.sendMail({
-        from: '"Flamingo Nails" <anvishett@gmail.com>',
+    await sendEmail({
         to: data.customerEmail,
         subject: "💅 Your Appointment is Confirmed!",
         html: `
