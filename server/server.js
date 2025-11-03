@@ -19,6 +19,17 @@ initializeApp({
 });
 const db = getFirestore();
 
+app.get("/test-db", async (req, res) => {
+    try {
+        const db = getFirestore();
+        await db.collection("test").add({ msg: "Hello Flamingo" });
+        res.send("✅ Firestore write successful!");
+    } catch (e) {
+        console.error(e);
+        res.status(500).send("🔥 Firestore write failed");
+    }
+});
+
 // --- EMAIL TRANSPORTER (GMAIL) ---
 const transporter = nodemailer.createTransport({
     service: "gmail",
