@@ -21,14 +21,19 @@ initializeApp({
 // ===================== FIREBASE INIT =====================
 let db;
 try {
-    initializeApp({
-        credential: applicationDefault(),
-    });
-    db = getFirestore();
-    console.log("✅ Firebase initialized successfully.");
+    if (!getApps().length) {
+        initializeApp({
+            credential: applicationDefault(),
+        });
+        console.log("✅ Firebase initialized successfully.");
+    } else {
+        console.log("ℹ️ Firebase app already initialized, reusing existing app.");
+    }
+    db = getFirestore(getApp());
 } catch (err) {
     console.error("🔥 Firebase initialization failed:", err.message);
 }
+
 
 // ===================== GMAIL TRANSPORTER =====================
 let transporter;
