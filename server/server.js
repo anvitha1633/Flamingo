@@ -1,5 +1,4 @@
-import dotenv from "dotenv";
-
+import { Resend } from "resend";
 process.stdout.write("🚀 Server starting...\n");
 
 import express from "express";
@@ -12,6 +11,7 @@ import dotenv from "dotenv";
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
+
 
 const app = express();
 app.use(cors());
@@ -28,7 +28,7 @@ const __dirname = path.dirname(__filename);
 // ====== FIREBASE INIT ======
 let db;
 try {
-    const serviceAccountPath = path.resolve(__dirname, "atproj-a2634-firebase-adminsdk-s47ao-39ea66e97c.json");
+    //const serviceAccountPath = path.resolve(__dirname, "atproj-a2634-firebase-adminsdk-s47ao-39ea66e97c.json");
 
     // ✅ Load service account from environment variable
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
