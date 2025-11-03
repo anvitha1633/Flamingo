@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config();
+
 process.stdout.write("🚀 Server starting...\n");
 
 import express from "express";
