@@ -17,31 +17,72 @@ app.use(express.json());
 initializeApp({
     credential: applicationDefault(),
 });
-const db = getFirestore();
 
-app.get("/test-db", async (req, res) => {
-    try {
-        const db = getFirestore();
-        await db.collection("test").add({ msg: "Hello Flamingo" });
-        res.send("✅ Firestore write successful!");
-    } catch (e) {
-        console.error(e);
-        res.status(500).send("🔥 Firestore write failed");
-    }
-});
+// ===================== FIREBASE INIT =====================
+let db;
+try {
+    initializeApp({
+        credential: applicationDefault(),
+    });
+    db = getFirestore();
+    console.log("✅ Firebase initialized successfully.");
+} catch (err) {
+    console.error("🔥 Firebase initialization failed:", err.message);
+}
 
-// --- EMAIL TRANSPORTER (GMAIL) ---
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: "anvishett@gmail.com",
-        pass: process.env.GMAIL_APP_PASSWORD, // 🔐 create at https://myaccount.google.com/apppasswords
-    },
-});
+// ===================== GMAIL TRANSPORTER =====================
+let transporter;
+try {
+    transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user: "anvishett@gmail.com",
+            pass: process.env.GMAIL_APP_PASSWORD,
+        },
+    });
+
+    // Test Gmail authentication
+    transporter.verify((error, success) => {
+        if (error) {
+            console.error("❌ Gmail transporter verification failed:", error.message);
+        } else {
+            console.log("✅ Gmail transporter is ready to send messages.");
+        }
+    });
+} catch (err) {
+    console.error("🔥 Nodemailer setup error:", err.message);
+}
 
 // --- TEST ROUTE ---
 app.get("/", (req, res) => {
     res.send("💅 Flamingo Nails AI Backend with Gmail booking flow is running securely!");
+});
+
+// --- FIRESTORE TEST ROUTE ---
+app.get("/test-db", async (req, res) => {
+    try {
+        await db.collection("test").add({ msg: "Hello Flamingo" });
+        res.send("✅ Firestore write successful!");
+    } catch (e) {
+        console.error("🔥 Firestore write failed:", e.message);
+        res.status(500).send("🔥 Firestore write failed");
+    }
+});
+
+// --- EMAIL TEST ROUTE ---
+app.get("/test-email", async (req, res) => {
+    try {
+        await transporter.sendMail({
+            from: '"Flamingo Test" <anvishett@gmail.com>',
+            to: "anvishett@gmail.com",
+            subject: "💅 Flamingo Test Email",
+            text: "This is a test email from Flamingo AI backend. Your Gmail app password works!",
+        });
+        res.send("✅ Test email sent successfully!");
+    } catch (err) {
+        console.error("🔥 Email sending failed:", err.message);
+        res.status(500).send("🔥 Email sending failed");
+    }
 });
 
 // --- AI CHAT ENDPOINT ---
