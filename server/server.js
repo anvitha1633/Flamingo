@@ -98,26 +98,34 @@ app.get("/test-db", async (req, res) => {
     }
 });
 
-// --- EMAIL TEST ROUTE ---
-app.post("/test-email", async (req, res) => {
+// --- TEST EMAIL ROUTE ---
+app.get("/test-email", async (req, res) => {
     try {
-        const { name = "Test User", service = "Nail Art", date = "2025-11-01", time = "2:00 PM", email = "customer@example.com" } = req.body;
+        const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                service_id: process.env.EMAILJS_SERVICE_ID,
+                template_id: process.env.EMAILJS_TEMPLATE_ID,
+                user_id: process.env.EMAILJS_PUBLIC_KEY,
+                template_params: {
+                    to_email: "anvishett@gmail.com",
+                    subject: "💅 Test Email from Flamingo Nails",
+                    message: "This is a test email from your Express server via EmailJS!"
+                }
+            })
+        });
 
-        await sendEmail(
-            "anvishett@gmail.com", // staff email
-            "💅 New Test Booking from EmailJS",
-            `New booking from ${name} for ${service} on ${date} at ${time}`,
-            `<h3>New Booking</h3>
-       <p><b>Customer:</b> ${name}</p>
-       <p><b>Service:</b> ${service}</p>
-       <p><b>Date:</b> ${date}</p>
-       <p><b>Time:</b> ${time}</p>
-       <p><b>Email:</b> ${email}</p>`
-        );
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`EmailJS error: ${errorText}`);
+        }
 
-        res.status(200).send("✅ Test email sent successfully via EmailJS!");
-    } catch (error) {
-        console.error("🔥 Test email error:", error);
+        res.send("✅ Test email sent successfully via EmailJS!");
+    } catch (err) {
+        console.error("🔥 Email sending failed:", err);
         res.status(500).send("❌ Failed to send test email");
     }
 });
@@ -247,21 +255,26 @@ app.get("/confirm-booking/:id", async (req, res) => {
 
     await ref.update({ status: "confirmed" });
 
-    await sendEmail({
-        to: data.customerEmail,
-        subject: "💅 Your Appointment is Confirmed!",
-        html: `
-            <p>Hi ${data.customerName},</p>
-            <p>Your appointment for <b>${data.service}</b> on <b>${data.date}</b> at <b>${data.time}</b> has been confirmed!</p>
-            <br/>
-            <a href="${process.env.BASE_URL}/final-confirm/${id}" style="background:#28a745;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">👍 Confirm</a>
-            &nbsp;&nbsp;
-            <a href="${process.env.BASE_URL}/rebook/${id}" style="background:#ffc107;color:#000;padding:10px 20px;border-radius:6px;text-decoration:none;">🔁 Rebook</a>
-        `,
-    });
+    // ✅ Send confirmation email to the customer via EmailJS
+    await sendEmail(
+        data.customerEmail,
+        "💅 Your Appointment is Confirmed!",
+        `Hi ${data.customerName}, your appointment for ${data.service} on ${data.date} at ${data.time} has been confirmed.`,
+        `
+        <p>Hi ${data.customerName},</p>
+        <p>Your appointment for <b>${data.service}</b> on <b>${data.date}</b> at <b>${data.time}</b> has been confirmed!</p>
+        <br/>
+        <a href="${process.env.BASE_URL}/final-confirm/${id}" 
+           style="background:#28a745;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">👍 Confirm</a>
+        &nbsp;&nbsp;
+        <a href="${process.env.BASE_URL}/rebook/${id}" 
+           style="background:#ffc107;color:#000;padding:10px 20px;border-radius:6px;text-decoration:none;">🔁 Rebook</a>
+        `
+    );
 
     res.send("✅ Booking confirmed and email sent to customer.");
 });
+
 
 // --- CUSTOMER FINAL CONFIRMATION ---
 app.get("/final-confirm/:id", async (req, res) => {
@@ -272,8 +285,24 @@ app.get("/final-confirm/:id", async (req, res) => {
     if (!booking.exists) return res.status(404).send("Booking not found");
 
     await ref.update({ status: "final-confirmed" });
+
+    // Optionally notify staff too
+    await sendEmail(
+        "anvishett@gmail.com",
+        "🎉 Customer Final Confirmation",
+        `Customer ${booking.data().customerName} has confirmed the appointment.`,
+        `
+        <h3>Final Confirmation</h3>
+        <p>Customer <b>${booking.data().customerName}</b> has confirmed the appointment for:</p>
+        <p><b>Service:</b> ${booking.data().service}</p>
+        <p><b>Date:</b> ${booking.data().date}</p>
+        <p><b>Time:</b> ${booking.data().time}</p>
+        `
+    );
+
     res.send("🎉 Booking confirmed by customer! It will now appear in MyBookings 💅");
 });
+
 
 // --- STAFF SUGGESTS NEW TIME ---
 app.get("/rebook/:id", async (req, res) => {
@@ -284,7 +313,23 @@ app.get("/rebook/:id", async (req, res) => {
     if (!booking.exists) return res.status(404).send("Booking not found");
 
     await ref.update({ status: "rebook-suggested" });
-    res.send("🕓 Please reply to this email with a new available time for the customer.");
+
+    // ✅ Notify customer via EmailJS
+    await sendEmail(
+        booking.data().customerEmail,
+        "🕓 New Time Suggested for Your Appointment",
+        `Hi ${booking.data().customerName}, our staff will follow up to reschedule your ${booking.data().service} appointment.`,
+        `
+        <p>Hi ${booking.data().customerName},</p>
+        <p>We’re suggesting a new time for your appointment for <b>${booking.data().service}</b>.</p>
+        <p>Our team will reach out shortly to confirm a new time slot.</p>
+        <br/>
+        <a href="${process.env.BASE_URL}/book" 
+           style="background:#007bff;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">📅 Rebook Now</a>
+        `
+    );
+
+    res.send("🕓 Rebook status updated and email sent to customer.");
 });
 
 app.listen(3000, () =>
