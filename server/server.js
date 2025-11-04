@@ -4,7 +4,6 @@ process.stdout.write("🚀 Server starting...\n");
 
 import express from "express";
 import cors from "cors";
-import fetch from "node-fetch";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 import path from "path";
