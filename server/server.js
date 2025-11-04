@@ -13,10 +13,10 @@ import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
 import Brevo from "@getbrevo/brevo";
 
-
 const app = express();
-app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 // --- FIREBASE INIT ---
 import admin from "firebase-admin";
@@ -68,7 +68,7 @@ export async function sendEmail(to, subject, text, html) {
         sendSmtpEmail.htmlContent = html;
 
         const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        console.log("✅ Email sent via Brevo API:", response.messageId);
+        console.log("✅ Email sent via Brevo API:", JSON.stringify(response));
     } catch (error) {
         console.error("🔥 Email sending failed via Brevo:", error.message);
     }
@@ -93,24 +93,30 @@ app.get("/test-db", async (req, res) => {
 // --- EMAIL TEST ROUTE ---
 app.get("/test-email", async (req, res) => {
     try {
-        const { name, service, date, time, email } = req.body; // ✅ include name
+        const name = "Test Customer";
+        const service = "Gel Nails";
+        const date = "2025-11-02";
+        const time = "4:00 PM";
+        const email = "customer@example.com";
+
         await sendEmail(
             "anvishett@gmail.com",  // staff email
-            "🪷 New Appointment Booking",
+            "🪷 New Appointment Booking (Test)",
             `New booking from ${name} for ${service} at ${time} on ${date}`,
             `<h3>New Booking</h3>
-            <p><b>Customer:</b> ${name}</p>
-            <p><b>Service:</b> ${service}</p>
-            <p><b>Time:</b> ${time}</p>
-            <p><b>Date:</b> ${date}</p>`
+       <p><b>Customer:</b> ${name}</p>
+       <p><b>Service:</b> ${service}</p>
+       <p><b>Time:</b> ${time}</p>
+       <p><b>Date:</b> ${date}</p>`
         );
 
-        res.status(200).send("Booking saved and email sent!");
+        res.status(200).send("✅ Test email sent successfully!");
     } catch (error) {
-        console.error("🔥 Booking or email error:", error);
-        res.status(500).send("Failed to save booking or send email");
+        console.error("🔥 Test email error:", error);
+        res.status(500).send("Failed to send test email");
     }
 });
+
 
 // --- AI CHAT ENDPOINT ---
 app.post("/ai-chat", async (req, res) => {
