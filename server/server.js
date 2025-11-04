@@ -62,7 +62,7 @@ export async function sendEmail(to, subject, text, html) {
         const sendSmtpEmail = new Brevo.SendSmtpEmail();
 
         sendSmtpEmail.sender = { name: "Flamingo Nails", email: process.env.BREVO_EMAIL };
-        sendSmtpEmail.to = [{ email: to, name: "anvithashet@gmail.com" }];
+        sendSmtpEmail.to = [{ email: to }];
         sendSmtpEmail.subject = subject;
         sendSmtpEmail.textContent = text;
         sendSmtpEmail.htmlContent = html;
@@ -93,14 +93,16 @@ app.get("/test-db", async (req, res) => {
 // --- EMAIL TEST ROUTE ---
 app.get("/test-email", async (req, res) => {
     try {
+        const { name, service, date, time, email } = req.body; // ✅ include name
         await sendEmail(
             "anvishett@gmail.com",  // staff email
             "🪷 New Appointment Booking",
-            `New booking from ${name} for ${service} at ${time}`,
+            `New booking from ${name} for ${service} at ${time} on ${date}`,
             `<h3>New Booking</h3>
             <p><b>Customer:</b> ${name}</p>
             <p><b>Service:</b> ${service}</p>
-            <p><b>Time:</b> ${time}</p>`
+            <p><b>Time:</b> ${time}</p>
+            <p><b>Date:</b> ${date}</p>`
         );
 
         res.status(200).send("Booking saved and email sent!");
