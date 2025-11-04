@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import fetch from "node-fetch";
 process.stdout.write("🚀 Server starting...\n");
 
 import express from "express";
@@ -51,26 +52,34 @@ try {
 // --- RESEND INIT ---
 //const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function sendEmail(to, subject, text, html) {
+export async function sendEmail(to, subject, message, html) {
     try {
-        const apiInstance = new Brevo.TransactionalEmailsApi();
-        apiInstance.setApiKey(
-            Brevo.TransactionalEmailsApiApiKeys.apiKey,
-            process.env.BREVO_API_KEY
-        );
+        const data = {
+            service_id: process.env.EMAILJS_SERVICE_ID,
+            template_id: process.env.EMAILJS_TEMPLATE_ID,
+            user_id: process.env.EMAILJS_PUBLIC_KEY,
+            template_params: {
+                to_email: to,
+                subject,
+                message,
+                html_message: html
+            },
+        };
 
-        const sendSmtpEmail = new Brevo.SendSmtpEmail();
+        const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
 
-        sendSmtpEmail.sender = { name: "Flamingo Nails", email: process.env.BREVO_EMAIL };
-        sendSmtpEmail.to = [{ email: to }];
-        sendSmtpEmail.subject = subject;
-        sendSmtpEmail.textContent = text;
-        sendSmtpEmail.htmlContent = html;
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`EmailJS error: ${errText}`);
+        }
 
-        const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        console.log("✅ Email sent via Brevo API:", JSON.stringify(response));
+        console.log("✅ Email sent successfully via EmailJS!");
     } catch (error) {
-        console.error("🔥 Email sending failed via Brevo:", error.message);
+        console.error("🔥 Email sending failed via EmailJS:", error.message);
     }
 }
 
@@ -91,32 +100,28 @@ app.get("/test-db", async (req, res) => {
 });
 
 // --- EMAIL TEST ROUTE ---
-app.get("/test-email", async (req, res) => {
+app.post("/test-email", async (req, res) => {
     try {
-        const name = "Test Customer";
-        const service = "Gel Nails";
-        const date = "2025-11-02";
-        const time = "4:00 PM";
-        const email = "customer@example.com";
+        const { name = "Test User", service = "Nail Art", date = "2025-11-01", time = "2:00 PM", email = "customer@example.com" } = req.body;
 
         await sendEmail(
-            "anvishett@gmail.com",  // staff email
-            "🪷 New Appointment Booking (Test)",
-            `New booking from ${name} for ${service} at ${time} on ${date}`,
+            "anvishett@gmail.com", // staff email
+            "💅 New Test Booking from EmailJS",
+            `New booking from ${name} for ${service} on ${date} at ${time}`,
             `<h3>New Booking</h3>
        <p><b>Customer:</b> ${name}</p>
        <p><b>Service:</b> ${service}</p>
+       <p><b>Date:</b> ${date}</p>
        <p><b>Time:</b> ${time}</p>
-       <p><b>Date:</b> ${date}</p>`
+       <p><b>Email:</b> ${email}</p>`
         );
 
-        res.status(200).send("✅ Test email sent successfully!");
+        res.status(200).send("✅ Test email sent successfully via EmailJS!");
     } catch (error) {
         console.error("🔥 Test email error:", error);
-        res.status(500).send("Failed to send test email");
+        res.status(500).send("❌ Failed to send test email");
     }
 });
-
 
 // --- AI CHAT ENDPOINT ---
 app.post("/ai-chat", async (req, res) => {
@@ -213,27 +218,19 @@ app.post("/book", async (req, res) => {
             createdAt: new Date(),
         });
 
-        const confirmUrl = `${process.env.BASE_URL}/confirm-booking/${bookingId}`;
-        const rebookUrl = `${process.env.BASE_URL}/rebook/${bookingId}`;
+        await sendEmail(
+            "anvishett@gmail.com", // Staff receives the notification
+            "💅 New Appointment Booking Request",
+            `New booking from ${customerName} for ${service} on ${date} at ${time}`,
+            `<h3>New Booking Request</h3>
+       <p><b>Customer:</b> ${customerName}</p>
+       <p><b>Service:</b> ${service}</p>
+       <p><b>Date:</b> ${date}</p>
+       <p><b>Time:</b> ${time}</p>
+       <p><b>Email:</b> ${customerEmail}</p>`
+        );
 
-        await sendEmail({
-            to: "anvishett@gmail.com",
-            subject: "💅 New Appointment Booking Request",
-            html: `
-                <h3>New Booking Request</h3>
-                <p><b>Customer:</b> ${customerName}</p>
-                <p><b>Service:</b> ${service}</p>
-                <p><b>Date:</b> ${date}</p>
-                <p><b>Time:</b> ${time}</p>
-                <p><b>Email:</b> ${customerEmail}</p>
-                <br/>
-                <a href="${confirmUrl}" style="background:#28a745;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">✅ Confirm Booking</a>
-                &nbsp;&nbsp;
-                <a href="${rebookUrl}" style="background:#ffc107;color:#000;padding:10px 20px;border-radius:6px;text-decoration:none;">🕓 Suggest New Time</a>
-            `,
-        });
-
-        res.json({ success: true, message: "Booking email sent to staff via Resend!" });
+        res.json({ success: true, message: "✅ Booking saved and email sent to staff via EmailJS!" });
     } catch (err) {
         console.error("🔥 Booking error:", err);
         res.status(500).json({ error: "Booking failed" });
