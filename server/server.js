@@ -11,15 +11,8 @@ import dotenv from "dotenv";
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
+import Brevo from "@getbrevo/brevo";
 
-const transporter = nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 587,
-    auth: {
-        user: process.env.BREVO_EMAIL,
-        pass: process.env.BREVO_API_KEY,
-    },
-});
 
 const app = express();
 app.use(cors());
@@ -58,20 +51,26 @@ try {
 // --- RESEND INIT ---
 //const resend = new Resend(process.env.RESEND_API_KEY);
 
-async function sendEmail({ to, subject, html, text }) {
+export async function sendEmail(to, subject, text, html) {
     try {
-        const info = await transporter.sendMail({
-            from: `Flamingo Nails <${process.env.BREVO_EMAIL}>`,
-            to,
-            subject,
-            html,
-            text,
-        });
-        if (error) throw new Error(error.message);
-        console.log("✅ Email sent via Resend:", data.id);
-    } catch (err) {
-        console.error("🔥 Email sending failed:", err.message);
-        throw err;
+        const apiInstance = new Brevo.TransactionalEmailsApi();
+        apiInstance.setApiKey(
+            Brevo.TransactionalEmailsApiApiKeys.apiKey,
+            process.env.BREVO_API_KEY
+        );
+
+        const sendSmtpEmail = new Brevo.SendSmtpEmail();
+
+        sendSmtpEmail.sender = { name: "Flamingo Nails", email: process.env.BREVO_EMAIL };
+        sendSmtpEmail.to = [{ email: to, name: "anvithashet@gmail.com" }];
+        sendSmtpEmail.subject = subject;
+        sendSmtpEmail.textContent = text;
+        sendSmtpEmail.htmlContent = html;
+
+        const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+        console.log("✅ Email sent via Brevo API:", response.messageId);
+    } catch (error) {
+        console.error("🔥 Email sending failed via Brevo:", error.message);
     }
 }
 
@@ -94,14 +93,20 @@ app.get("/test-db", async (req, res) => {
 // --- EMAIL TEST ROUTE ---
 app.get("/test-email", async (req, res) => {
     try {
-        await sendEmail({
-            to: "anvithashet@gmail.com",
-            subject: "💅 Flamingo Test Email (Resend)",
-            html: `<p>This is a test email sent using <b>Resend</b>. If you received this, your setup works perfectly! 💖</p>`,
-        });
-        res.send("✅ Test email sent successfully!");
-    } catch (err) {
-        res.status(500).send("🔥 Email sending failed");
+        await sendEmail(
+            "anvishett@gmail.com",  // staff email
+            "🪷 New Appointment Booking",
+            `New booking from ${name} for ${service} at ${time}`,
+            `<h3>New Booking</h3>
+            <p><b>Customer:</b> ${name}</p>
+            <p><b>Service:</b> ${service}</p>
+            <p><b>Time:</b> ${time}</p>`
+        );
+
+        res.status(200).send("Booking saved and email sent!");
+    } catch (error) {
+        console.error("🔥 Booking or email error:", error);
+        res.status(500).send("Failed to save booking or send email");
     }
 });
 
