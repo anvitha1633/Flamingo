@@ -43,37 +43,6 @@ try {
 } catch (err) {
     console.error("🔥 Firebase initialization failed:", err);
 }
-// --- EMAILJS HELPER ---
-export async function sendEmail(to, subject, message, html) {
-    try {
-        const data = {
-            service_id: process.env.EMAILJS_SERVICE_ID,
-            template_id: process.env.EMAILJS_TEMPLATE_ID,
-            user_id: process.env.EMAILJS_PUBLIC_KEY,
-            template_params: {
-                to_email: to,
-                subject,
-                message,
-                html_message: html,
-            },
-        };
-
-        const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-        });
-
-        if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`EmailJS error: ${errText}`);
-        }
-
-        console.log("✅ Email sent successfully via EmailJS!");
-    } catch (error) {
-        console.error("🔥 Email sending failed via EmailJS:", error.message);
-    }
-}
 
 // --- TEST ROUTE ---
 app.get("/", (req, res) => {
@@ -172,34 +141,60 @@ Remember: Flamingo AI represents a luxury beauty brand — be confident, kind, a
     }
 });
 
-// --- Notify staff on WhatsApp via n8n ---
-app.post("/notify-staff", async (req, res) => {
-    const { customerName, service, date, time, customerEmail } = req.body;
-    const n8nWebhook = process.env.N8N_WHATSAPP_WEBHOOK_URL;
-
+// ---Customer Book Appointment ---
+app.post("/book", async (req, res) => {
     try {
+        const { customerName, customerEmail, service, date, time } = req.body;
+
+        if (!customerName || !service || !date || !time)
+            return res.status(400).json({ error: "Missing booking details" });
+
+        // Create booking in Firestore
+        const newBooking = {
+            customerName,
+            customerEmail,
+            service,
+            date,
+            time,
+            status: "pending",
+            createdAt: new Date(),
+        };
+
+        const ref = await db.collection("bookings").add(newBooking);
+        console.log("📦 New booking saved:", ref.id);
+
+        // Trigger WhatsApp message to staff via n8n webhook
+        const n8nWebhook = process.env.N8N_WHATSAPP_WEBHOOK_URL;
+        if (!n8nWebhook)
+            return res.status(500).json({ error: "Missing N8N webhook URL" });
+
         await fetch(n8nWebhook, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                phone: "+918296584278", // staff number
-                message: `💅 New Booking Request!
-Customer: ${customerName}
-Service: ${service}
-Date: ${date}
-Time: ${time}
-Email: ${customerEmail}`,
+                phone: "+918296584278",
+                message: `💅 *New Booking Request!*
+🧍 Customer: ${customerName}
+💌 Email: ${customerEmail || "N/A"}
+💖 Service: ${service}
+📅 Date: ${date}
+⏰ Time: ${time}
+🆔 Booking ID: ${ref.id}
+
+Reply *Confirm ${ref.id}* or *Rebook ${ref.id}* in WhatsApp.`,
             }),
         });
+
         console.log("✅ WhatsApp notification sent via n8n");
-        res.json({ success: true });
+
+        res.json({ success: true, bookingId: ref.id });
     } catch (err) {
-        console.error("🔥 WhatsApp message failed:", err.message);
-        res.status(500).json({ error: "Failed to send WhatsApp message" });
+        console.error("🔥 Booking error:", err);
+        res.status(500).json({ error: "Server error during booking" });
     }
 });
 
-// --- API route: staff confirms booking via WhatsApp (triggered by n8n) ---
+// --- STAFF CONFIRMS BOOKING VIA n8n CALLBACK ---
 app.post("/api/whatsapp/confirm", async (req, res) => {
     try {
         const { bookingId } = req.body;
@@ -209,61 +204,39 @@ app.post("/api/whatsapp/confirm", async (req, res) => {
         const booking = await ref.get();
         if (!booking.exists) return res.status(404).send("Booking not found");
 
-        const data = booking.data();
         await ref.update({ status: "confirmed" });
+        console.log(`✅ Booking ${bookingId} confirmed by staff`);
 
-        // Notify customer
-        await sendEmail(
-            data.customerEmail,
-            "💅 Your Appointment is Confirmed!",
-            `Hi ${data.customerName}, your appointment for ${data.service} on ${data.date} at ${data.time} has been confirmed.`,
-            `<p>Hi ${data.customerName},</p>
-       <p>Your appointment for <b>${data.service}</b> on <b>${data.date}</b> at <b>${data.time}</b> has been confirmed!</p>`
-        );
-
-        console.log(`✅ Booking ${bookingId} confirmed via WhatsApp`);
         res.json({ success: true });
     } catch (err) {
-        console.error("🔥 WhatsApp confirm error:", err);
+        console.error("🔥 Confirm error:", err);
         res.status(500).json({ error: "Server error" });
     }
 });
 
-
-// --- API route: staff suggests rebooking via WhatsApp (triggered by n8n) ---
+// --- STAFF REBOOKS APPOINTMENT VIA n8n CALLBACK ---
 app.post("/api/whatsapp/rebook", async (req, res) => {
     try {
-        const { bookingId } = req.body;
+        const { bookingId, newDate, newTime } = req.body;
         if (!bookingId) return res.status(400).send("Missing bookingId");
 
         const ref = db.collection("bookings").doc(bookingId);
         const booking = await ref.get();
         if (!booking.exists) return res.status(404).send("Booking not found");
 
-        const data = booking.data();
-        await ref.update({ status: "rebook-suggested" });
+        await ref.update({
+            status: "rebook-suggested",
+            ...(newDate && { date: newDate }),
+            ...(newTime && { time: newTime }),
+        });
 
-        await sendEmail(
-            data.customerEmail,
-            "🔁 Let's Reschedule Your Appointment",
-            `Hi ${data.customerName}, our staff will follow up to confirm a new time for your ${data.service} appointment.`,
-            `<p>Hi ${data.customerName},</p>
-       <p>We’d love to reschedule your <b>${data.service}</b> appointment. Our staff will reach out shortly with new available times.</p>`
-        );
-
-        console.log(`🔁 Booking ${bookingId} marked for rebooking via WhatsApp`);
+        console.log(`🔁 Booking ${bookingId} marked for rebooking`);
         res.json({ success: true });
     } catch (err) {
-        console.error("🔥 WhatsApp rebook error:", err);
+        console.error("🔥 Rebook error:", err);
         res.status(500).json({ error: "Server error" });
     }
 });
-
-
-// --- STAFF CONFIRMS BOOKING ---
-
-
-// --- STAFF SUGGESTS NEW TIME ---
 
 app.listen(3000, () =>
     console.log("✅ Secure Flamingo AI backend with Gmail email booking flow running on http://localhost:3000")
