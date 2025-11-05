@@ -3,7 +3,6 @@ import fetch from "node-fetch";
 process.stdout.write("🚀 Server starting...\n");
 import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
-import { getMessaging } from "firebase-admin/messaging";
 import express from "express";
 import cors from "cors";
 import nodemailer from "nodemailer";
