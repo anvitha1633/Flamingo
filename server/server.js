@@ -33,10 +33,6 @@ getToken(messaging, { vapidKey: "YOUR_VAPID_KEY" })
     })
     .catch((err) => console.error("Token error:", err));
 
-import admin from "firebase-admin";
-import { getFirestore } from "firebase-admin/firestore";
-import { getMessaging } from "firebase-admin/messaging";
-
 // --- FIREBASE INIT ---
 import admin from "firebase-admin";
 
