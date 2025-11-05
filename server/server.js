@@ -1,7 +1,9 @@
 import { Resend } from "resend";
 import fetch from "node-fetch";
 process.stdout.write("🚀 Server starting...\n");
-
+import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
+import { getMessaging } from "firebase-admin/messaging";
 import express from "express";
 import cors from "cors";
 import nodemailer from "nodemailer";
@@ -9,6 +11,8 @@ import crypto from "crypto";
 import path from "path";
 import dotenv from "dotenv";
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
 import Brevo from "@getbrevo/brevo";
@@ -17,6 +21,55 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDW24NFAz-MQDTaHD974-Go1yNZgpKPNVs",
+    projectId: "atproj-a2634",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID",
+};
+const app1 = initializeApp(firebaseConfig);
+const messaging = getMessaging(app1);
+
+getToken(messaging, { vapidKey: "YOUR_VAPID_KEY" })
+    .then((token) => {
+        console.log("🔑 FCM Token:", token);
+        // Save this token to Firestore under staff_tokens/{staffId}
+    })
+    .catch((err) => console.error("Token error:", err));
+
+import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
+import { getMessaging } from "firebase-admin/messaging";
+
+const db1 = getFirestore();
+
+async function notifyStaffBooking(customerName, service, date, time) {
+    try {
+        const snapshot = await db1.collection("staff_tokens").get();
+        const tokens = snapshot.docs.map((doc) => doc.data().token);
+
+        if (tokens.length === 0) {
+            console.log("⚠️ No staff tokens found");
+            return;
+        }
+
+        const message = {
+            notification: {
+                title: "💅 New Appointment Booking!",
+                body: `${customerName} booked ${service} on ${date} at ${time}`,
+            },
+            tokens,
+        };
+
+        const response = await getMessaging().sendMulticast(message);
+        console.log("✅ Notification sent to staff:", response.successCount, "successes");
+    } catch (err) {
+        console.error("🔥 FCM send error:", err);
+    }
+}
+
+await notifyStaffBooking(customerName, service, date, time);
 
 // --- FIREBASE INIT ---
 import admin from "firebase-admin";
@@ -100,42 +153,42 @@ app.get("/test-db", async (req, res) => {
 
 // --- TEST EMAIL ROUTE ---
 app.get("/test-email", async (req, res) => {
-  try {
-    const serviceID = process.env.EMAILJS_SERVICE_ID;
-    const templateID = process.env.EMAILJS_TEMPLATE_ID;
-    const publicKey = process.env.EMAILJS_PUBLIC_KEY;
+    try {
+        const serviceID = process.env.EMAILJS_SERVICE_ID;
+        const templateID = process.env.EMAILJS_TEMPLATE_ID;
+        const publicKey = process.env.EMAILJS_PUBLIC_KEY;
 
-    if (!serviceID || !templateID || !publicKey) {
-      throw new Error("Missing EmailJS environment variables");
-    }
-
-    const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        service_id: serviceID,
-        template_id: templateID,
-        user_id: publicKey,
-        template_params: {
-          to_name: "Anvi",
-          to_email: "anvishett@gmail.com",
-          message: "This is a test email from Flamingo Nails backend!"
+        if (!serviceID || !templateID || !publicKey) {
+            throw new Error("Missing EmailJS environment variables");
         }
-      })
-    });
 
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`EmailJS API failed: ${response.status} ${text}`);
+        const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                service_id: serviceID,
+                template_id: templateID,
+                user_id: publicKey,
+                template_params: {
+                    to_name: "Anvi",
+                    to_email: "anvishett@gmail.com",
+                    message: "This is a test email from Flamingo Nails backend!"
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`EmailJS API failed: ${response.status} ${text}`);
+        }
+
+        res.send("✅ Test email sent successfully via EmailJS REST API!");
+    } catch (err) {
+        console.error("🔥 Email sending failed:", err);
+        res.status(500).send(`Email sending failed: ${err.message}`);
     }
-
-    res.send("✅ Test email sent successfully via EmailJS REST API!");
-  } catch (err) {
-    console.error("🔥 Email sending failed:", err);
-    res.status(500).send(`Email sending failed: ${err.message}`);
-  }
 });
 
 // --- AI CHAT ENDPOINT ---
@@ -216,41 +269,28 @@ Remember: Flamingo AI represents a luxury beauty brand — be confident, kind, a
     }
 });
 
-// --- BOOKING ENDPOINT ---
-app.post("/book", async (req, res) => {
-    const { customerEmail, customerName, service, date, time } = req.body;
-    console.log("🗓️ Booking request:", req.body);
+// --- Notify staff on WhatsApp via n8n ---
+const n8nWebhook = process.env.N8N_WHATSAPP_WEBHOOK_URL;
 
-    try {
-        const bookingId = crypto.randomBytes(8).toString("hex");
-        await db.collection("bookings").doc(bookingId).set({
-            customerEmail,
-            customerName,
-            service,
-            date,
-            time,
-            status: "pending",
-            createdAt: new Date(),
-        });
+try {
+    await fetch(n8nWebhook, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            phone: "+918296584278", // staff phone
+            message: `💅 New Booking Request!
+Customer: ${customerName}
+Service: ${service}
+Date: ${date}
+Time: ${time}
+Email: ${customerEmail}`,
+        }),
+    });
+    console.log("✅ WhatsApp notification sent via n8n");
+} catch (err) {
+    console.error("🔥 WhatsApp message failed:", err.message);
+}
 
-        await sendEmail(
-            "anvishett@gmail.com", // Staff receives the notification
-            "💅 New Appointment Booking Request",
-            `New booking from ${customerName} for ${service} on ${date} at ${time}`,
-            `<h3>New Booking Request</h3>
-       <p><b>Customer:</b> ${customerName}</p>
-       <p><b>Service:</b> ${service}</p>
-       <p><b>Date:</b> ${date}</p>
-       <p><b>Time:</b> ${time}</p>
-       <p><b>Email:</b> ${customerEmail}</p>`
-        );
-
-        res.json({ success: true, message: "✅ Booking saved and email sent to staff via EmailJS!" });
-    } catch (err) {
-        console.error("🔥 Booking error:", err);
-        res.status(500).json({ error: "Booking failed" });
-    }
-});
 
 // --- STAFF CONFIRMS BOOKING ---
 app.get("/confirm-booking/:id", async (req, res) => {
