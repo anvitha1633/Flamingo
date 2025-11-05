@@ -28,8 +28,6 @@ const firebaseConfig = {
     messagingSenderId: "YOUR_SENDER_ID",
     appId: "YOUR_APP_ID",
 };
-const app1 = initializeApp(firebaseConfig);
-const messaging = getMessaging(app1);
 
 getToken(messaging, { vapidKey: "YOUR_VAPID_KEY" })
     .then((token) => {
@@ -41,35 +39,6 @@ getToken(messaging, { vapidKey: "YOUR_VAPID_KEY" })
 import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
-
-const db1 = getFirestore();
-
-async function notifyStaffBooking(customerName, service, date, time) {
-    try {
-        const snapshot = await db1.collection("staff_tokens").get();
-        const tokens = snapshot.docs.map((doc) => doc.data().token);
-
-        if (tokens.length === 0) {
-            console.log("⚠️ No staff tokens found");
-            return;
-        }
-
-        const message = {
-            notification: {
-                title: "💅 New Appointment Booking!",
-                body: `${customerName} booked ${service} on ${date} at ${time}`,
-            },
-            tokens,
-        };
-
-        const response = await getMessaging().sendMulticast(message);
-        console.log("✅ Notification sent to staff:", response.successCount, "successes");
-    } catch (err) {
-        console.error("🔥 FCM send error:", err);
-    }
-}
-
-await notifyStaffBooking(customerName, service, date, time);
 
 // --- FIREBASE INIT ---
 import admin from "firebase-admin";
@@ -290,6 +259,66 @@ Email: ${customerEmail}`,
 } catch (err) {
     console.error("🔥 WhatsApp message failed:", err.message);
 }
+
+// --- API route: staff confirms booking via WhatsApp (triggered by n8n) ---
+app.post("/api/whatsapp/confirm", async (req, res) => {
+    try {
+        const { bookingId } = req.body;
+        if (!bookingId) return res.status(400).send("Missing bookingId");
+
+        const ref = db.collection("bookings").doc(bookingId);
+        const booking = await ref.get();
+        if (!booking.exists) return res.status(404).send("Booking not found");
+
+        const data = booking.data();
+        await ref.update({ status: "confirmed" });
+
+        // Notify customer
+        await sendEmail(
+            data.customerEmail,
+            "💅 Your Appointment is Confirmed!",
+            `Hi ${data.customerName}, your appointment for ${data.service} on ${data.date} at ${data.time} has been confirmed.`,
+            `<p>Hi ${data.customerName},</p>
+       <p>Your appointment for <b>${data.service}</b> on <b>${data.date}</b> at <b>${data.time}</b> has been confirmed!</p>`
+        );
+
+        console.log(`✅ Booking ${bookingId} confirmed via WhatsApp`);
+        res.json({ success: true });
+    } catch (err) {
+        console.error("🔥 WhatsApp confirm error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+
+// --- API route: staff suggests rebooking via WhatsApp (triggered by n8n) ---
+app.post("/api/whatsapp/rebook", async (req, res) => {
+    try {
+        const { bookingId } = req.body;
+        if (!bookingId) return res.status(400).send("Missing bookingId");
+
+        const ref = db.collection("bookings").doc(bookingId);
+        const booking = await ref.get();
+        if (!booking.exists) return res.status(404).send("Booking not found");
+
+        const data = booking.data();
+        await ref.update({ status: "rebook-suggested" });
+
+        await sendEmail(
+            data.customerEmail,
+            "🔁 Let's Reschedule Your Appointment",
+            `Hi ${data.customerName}, our staff will follow up to confirm a new time for your ${data.service} appointment.`,
+            `<p>Hi ${data.customerName},</p>
+       <p>We’d love to reschedule your <b>${data.service}</b> appointment. Our staff will reach out shortly with new available times.</p>`
+        );
+
+        console.log(`🔁 Booking ${bookingId} marked for rebooking via WhatsApp`);
+        res.json({ success: true });
+    } catch (err) {
+        console.error("🔥 WhatsApp rebook error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
 
 
 // --- STAFF CONFIRMS BOOKING ---
