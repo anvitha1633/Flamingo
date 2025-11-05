@@ -8,7 +8,6 @@ import nodemailer from "nodemailer";
 import crypto from "crypto";
 import path from "path";
 import dotenv from "dotenv";
-import admin from 'firebase-admin';
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { getFirestore } from "firebase-admin/firestore";
