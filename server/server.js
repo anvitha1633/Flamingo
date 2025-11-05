@@ -26,6 +26,15 @@ const firebaseConfig = {
     appId: "YOUR_APP_ID",
 };
 
+import serviceAccount from "./serviceAccountKey.json" assert { type: "json" };
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+  console.log("✅ Firebase Admin initialized");
+}
+
 getToken(messaging, { vapidKey: "YOUR_VAPID_KEY" })
     .then((token) => {
         console.log("🔑 FCM Token:", token);
