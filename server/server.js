@@ -10,7 +10,6 @@ import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
 import {
-    getFirestore,
     collection,
     addDoc,
     doc,
