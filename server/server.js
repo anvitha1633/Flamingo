@@ -9,7 +9,14 @@ import admin from "firebase-admin";
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
-
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    doc,
+    getDoc,
+    updateDoc
+} from "firebase-admin/firestore";
 // --- Load .env ---
 dotenv.config();
 
@@ -57,16 +64,13 @@ app.get("/", (req, res) => {
 // --- FIRESTORE TEST ROUTE ---
 app.get("/test-db", async (req, res) => {
     try {
-        await db.collection("test").add({ msg: "Hello Flamingo" });
+        await addDoc(collection(db, "test"), { msg: "Hello Flamingo" });
         res.send("✅ Firestore write successful!");
     } catch (e) {
         console.error("🔥 Firestore write failed:", e.message);
         res.status(500).send("🔥 Firestore write failed");
     }
 });
-
-// --- TEST EMAIL ROUTE ---
-
 
 // --- AI CHAT ENDPOINT ---
 app.post("/ai-chat", async (req, res) => {
@@ -166,7 +170,8 @@ app.post("/book", async (req, res) => {
             status: "pending",
             createdAt: new Date(),
         };
-        const bookingRef = await db.collection("bookings").add(newBooking);
+        const bookingRef = await addDoc(collection(db, "bookings"), newBooking);
+
         console.log("✅ Booking stored:", bookingRef.id);
 
         // 2️⃣ Notify n8n webhook (WhatsApp trigger)
@@ -209,11 +214,12 @@ app.post("/api/whatsapp/confirm", async (req, res) => {
         const { bookingId } = req.body;
         if (!bookingId) return res.status(400).send("Missing bookingId");
 
-        const ref = db.collection("bookings").doc(bookingId);
-        const booking = await ref.get();
-        if (!booking.exists) return res.status(404).send("Booking not found");
+        const bookingRef = doc(db, "bookings", bookingId);
+        const bookingSnap = await getDoc(bookingRef);
+        if (!bookingSnap.exists()) return res.status(404).send("Booking not found");
 
-        await ref.update({ status: "confirmed" });
+        await updateDoc(bookingRef, { status: "confirmed" });
+
         console.log(`✅ Booking ${bookingId} confirmed by staff`);
 
         res.json({ success: true });
@@ -229,11 +235,11 @@ app.post("/api/whatsapp/rebook", async (req, res) => {
         const { bookingId, newDate, newTime } = req.body;
         if (!bookingId) return res.status(400).send("Missing bookingId");
 
-        const ref = db.collection("bookings").doc(bookingId);
-        const booking = await ref.get();
-        if (!booking.exists) return res.status(404).send("Booking not found");
+        const bookingRef = doc(db, "bookings", bookingId);
+        const bookingSnap = await getDoc(bookingRef);
+        if (!bookingSnap.exists()) return res.status(404).send("Booking not found");
 
-        await ref.update({
+        await updateDoc(bookingRef, {
             status: "rebook-suggested",
             ...(newDate && { date: newDate }),
             ...(newTime && { time: newTime }),
