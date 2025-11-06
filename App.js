@@ -17,6 +17,8 @@ const AI_BACKEND_URL = 'https://your-backend.example.com/ai-chat'; // replace wi
 function SignInScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [pass, setPass] = useState('');
+    const [user, setUser] = useState(null);
+    const [role, setRole] = useState(null);
 
     async function signIn() {
         try {
@@ -95,15 +97,29 @@ function SignUpScreen() {
 // ------------------ HOME ------------------
 function HomeScreen({ navigation }) {
     const [user, setUser] = useState(null);
+    const [role, setRole] = useState(null);
 
     useEffect(() => {
-        const unsub = onAuthStateChanged(auth, u => setUser(u));
+        const unsub = onAuthStateChanged(auth, async (u) => {
+            setUser(u);
+            if (u) {
+                const ref = doc(db, "users", u.uid);
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    setRole(snap.data().role);
+                } else {
+                    setRole(null);
+                }
+            } else {
+                setRole(null);
+            }
+        });
         return unsub;
     }, []);
 
     async function doSignOut() {
         await signOut(auth);
-        Alert.alert('Signed out');
+        Alert.alert("Signed out");
     }
 
     return (
@@ -111,17 +127,30 @@ function HomeScreen({ navigation }) {
             <Text style={{ fontSize: 22 }}>Welcome to Flamingo Nails</Text>
             <Text style={{ marginTop: 8 }}>Locations: Mangalore, Manipal</Text>
             <View style={{ height: 12 }} />
+
             <Button title="Book Appointment" onPress={() => navigation.navigate('Services')} />
             <View style={{ height: 10 }} />
             <Button title="Chat with AI Assistant" onPress={() => navigation.navigate('Chat')} />
             <View style={{ height: 10 }} />
             <Button title="My Bookings" onPress={() => navigation.navigate('MyBookings')} />
             <View style={{ height: 20 }} />
+
             {user ? (
                 <>
                     <Text>Signed in as: {user.email}</Text>
                     <View style={{ height: 8 }} />
                     <Button title="Sign out" onPress={doSignOut} />
+
+                    {/* ✅ Only for Receptionist users */}
+                    {role === "receptionist" && (
+                        <>
+                            <View style={{ height: 10 }} />
+                            <Button
+                                title="Receptionist Dashboard"
+                                onPress={() => navigation.navigate('ReceptionistDashboard')}
+                            />
+                        </>
+                    )}
                 </>
             ) : (
                 <Button title="Sign in / Sign up" onPress={() => navigation.navigate('SignIn')} />
@@ -316,21 +345,6 @@ export default function App() {
                 <Stack.Screen name="Book" component={BookScreen} />
                 <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
                 <Stack.Screen name="Chat" component={ChatScreen} />
-            </Stack.Navigator>
-            <Stack.Navigator>
-                <Stack.Screen
-                    name="CustomerBooking"
-                    component={CustomerBooking}
-                    options={({ navigation }) => ({
-                        title: "Customer Booking",
-                        headerRight: () => (
-                            <Button
-                                title="Reception"
-                                onPress={() => navigation.navigate("ReceptionistDashboard")}
-                            />
-                        ),
-                    })}
-                />
                 <Stack.Screen
                     name="ReceptionistDashboard"
                     component={ReceptionistDashboard}
