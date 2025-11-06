@@ -162,6 +162,7 @@ app.post("/book", async (req, res) => {
         console.log("📥 Received booking request:", req.body);
         // 1️⃣ Save booking to Firestore
         const newBooking = {
+            customerId: request.auth.uid,
             customerName,
             customerEmail,
             appointmentDate,
