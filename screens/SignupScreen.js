@@ -21,15 +21,10 @@ export default function SignupScreen({ navigation }) {
             // 🔥 1️⃣ Create user in Firebase Authentication
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
-            
-            await setDoc(doc(db, "users", auth.currentUser.uid), {
-                email: email,
-                role: "customer"  // you can change admin/reception manually
-            });
+
             // 🔥 2️⃣ Save extra details to Firestore
             await setDoc(doc(db, 'users', user.uid), {
                 name,
-                phone,
                 email,
                 service,
                 createdAt: new Date().toISOString(),
