@@ -4,6 +4,8 @@ import { View, Text, TextInput, Button, FlatList, TouchableOpacity, Alert } from
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { auth, db } from './firebaseConfig';
+import { Button } from "react-native";
+import ReceptionistDashboard from "./screens/ReceptionistDashboard";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import axios from 'axios';
@@ -12,6 +14,32 @@ import { SERVICES } from './services';
 const Stack = createNativeStackNavigator();
 const AI_BACKEND_URL = 'https://your-backend.example.com/ai-chat'; // replace with your deployed backend URL
 
+export default function App() {
+    return (
+        <NavigationContainer>
+            <Stack.Navigator>
+                <Stack.Screen
+                    name="CustomerBooking"
+                    component={CustomerBooking}
+                    options={({ navigation }) => ({
+                        title: "Customer Booking",
+                        headerRight: () => (
+                            <Button
+                                title="Reception"
+                                onPress={() => navigation.navigate("ReceptionistDashboard")}
+                            />
+                        ),
+                    })}
+                />
+                <Stack.Screen
+                    name="ReceptionistDashboard"
+                    component={ReceptionistDashboard}
+                    options={{ title: "Receptionist Dashboard" }}
+                />
+            </Stack.Navigator>
+        </NavigationContainer>
+    );
+}
 // ------------------ SIGN IN ------------------
 function SignInScreen({ navigation }) {
     const [email, setEmail] = useState('');
