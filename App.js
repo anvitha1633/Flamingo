@@ -9,7 +9,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, on
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import axios from 'axios';
 import { SERVICES } from './services';
-import { collection, addDoc, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 const Stack = createNativeStackNavigator();
 const AI_BACKEND_URL = 'https://your-backend.example.com/ai-chat'; // replace with your deployed backend URL
