@@ -162,15 +162,18 @@ function BookScreen({ route, navigation }) {
         if (!user) { Alert.alert('Please sign in'); return; }
         if (!date || !time) { Alert.alert('Pick date & time'); return; }
         try {
-            await addDoc(collection(db, 'bookings'), {
-                userId: user.uid,
-                userEmail: user.email,
-                serviceId: service.id,
-                serviceName: service.name,
-                date, time,
-                createdAt: new Date().toISOString(),
-                status: 'pending'
+            await fetch("https://flamingo-ctga.onrender.com/book", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    customerName: user.displayName || "Unknown User",
+                    customerEmail: user.email,
+                    appointmentDate: date,
+                    appointmentTime: time,
+                    serviceType: service.name,
+                }),
             });
+
             Alert.alert('Booking created', `Service: ${service.name}\n${date} ${time}`);
             navigation.popToTop();
         } catch (e) {

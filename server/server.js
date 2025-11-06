@@ -21,6 +21,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
+app.use((req, res, next) => {
+    console.log(`➡️  Incoming request: ${req.method} ${req.url}`);
+    next();
+});
+
 // --- Paths ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -174,7 +179,7 @@ app.post("/book", async (req, res) => {
             serviceType,
             status: "pending"
         };
-        
+
         console.log("📡 Sending payload to n8n:", n8nPayload);
         const n8nResponse = await fetch(webhookUrl, {
             method: "POST",
