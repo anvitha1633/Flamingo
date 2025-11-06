@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ✅ Your actual config values
 const firebaseConfig = {
@@ -20,8 +21,10 @@ const firebaseConfig = {
     appId: "1:766446917106:web:9f5147ec04aa20f32bc76b"
 };
 
-const app = initializeApp(firebaseConfig);
+// ✅ Ensures authentication persists after app restart
+export const auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+});
 
-export const auth = getAuth(app);  // ✅ correctly exported
+// ✅ Firestore
 export const db = getFirestore(app);
-
