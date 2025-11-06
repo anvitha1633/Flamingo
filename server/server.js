@@ -149,6 +149,7 @@ Remember: Flamingo AI represents a luxury beauty brand — be confident, kind, a
 // --- BOOKING ENDPOINT ---
 app.post("/book", async (req, res) => {
     try {
+        console.log("📥 Raw body:", req.body);
         const { customerName, phoneNumber, appointmentDate, appointmentTime, serviceType } = req.body;
 
         if (!customerName || !phoneNumber || !appointmentDate || !appointmentTime || !serviceType) {
