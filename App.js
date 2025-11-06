@@ -13,32 +13,6 @@ import { SERVICES } from './services';
 const Stack = createNativeStackNavigator();
 const AI_BACKEND_URL = 'https://your-backend.example.com/ai-chat'; // replace with your deployed backend URL
 
-export default function App() {
-    return (
-        <NavigationContainer>
-            <Stack.Navigator>
-                <Stack.Screen
-                    name="CustomerBooking"
-                    component={CustomerBooking}
-                    options={({ navigation }) => ({
-                        title: "Customer Booking",
-                        headerRight: () => (
-                            <Button
-                                title="Reception"
-                                onPress={() => navigation.navigate("ReceptionistDashboard")}
-                            />
-                        ),
-                    })}
-                />
-                <Stack.Screen
-                    name="ReceptionistDashboard"
-                    component={ReceptionistDashboard}
-                    options={{ title: "Receptionist Dashboard" }}
-                />
-            </Stack.Navigator>
-        </NavigationContainer>
-    );
-}
 // ------------------ SIGN IN ------------------
 function SignInScreen({ navigation }) {
     const [email, setEmail] = useState('');
@@ -342,6 +316,26 @@ export default function App() {
                 <Stack.Screen name="Book" component={BookScreen} />
                 <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
                 <Stack.Screen name="Chat" component={ChatScreen} />
+            </Stack.Navigator>
+            <Stack.Navigator>
+                <Stack.Screen
+                    name="CustomerBooking"
+                    component={CustomerBooking}
+                    options={({ navigation }) => ({
+                        title: "Customer Booking",
+                        headerRight: () => (
+                            <Button
+                                title="Reception"
+                                onPress={() => navigation.navigate("ReceptionistDashboard")}
+                            />
+                        ),
+                    })}
+                />
+                <Stack.Screen
+                    name="ReceptionistDashboard"
+                    component={ReceptionistDashboard}
+                    options={{ title: "Receptionist Dashboard" }}
+                />
             </Stack.Navigator>
         </NavigationContainer>
     );
