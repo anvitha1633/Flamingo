@@ -21,10 +21,19 @@ const firebaseConfig = {
     appId: "1:766446917106:web:9f5147ec04aa20f32bc76b"
 };
 
-// ✅ Ensures authentication persists after app restart
-export const auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
-});
+// ✅ Initialize Firebase App FIRST
+const app = initializeApp(firebaseConfig);
+let auth;
+try {
+    auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage),
+    });
+} catch (e) {
+    auth = getAuth(app);
+}
 
 // ✅ Firestore
-export const db = getFirestore(app);
+const db = getFirestore(app);
+
+// ✅ Export correctly
+export { auth, db };
