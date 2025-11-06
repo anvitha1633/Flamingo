@@ -159,7 +159,7 @@ app.post("/book", async (req, res) => {
         // 1️⃣ Save booking to Firestore
         const newBooking = {
             customerName,
-            phoneNumber,
+            customerEmail,
             appointmentDate,
             appointmentTime,
             serviceType,
