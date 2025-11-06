@@ -9,7 +9,7 @@ import {
     TextInput,
     Modal,
 } from "react-native";
-import { db, auth } from "../firebase";
+import { db, auth } from "../firebaseConfig";
 import {
     collection,
     query,
