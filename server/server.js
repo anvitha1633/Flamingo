@@ -141,56 +141,56 @@ Remember: Flamingo AI represents a luxury beauty brand — be confident, kind, a
     }
 });
 
-// ---Customer Book Appointment ---
+// --- BOOKING ENDPOINT ---
 app.post("/book", async (req, res) => {
     try {
-        const { customerName, customerEmail, service, date, time } = req.body;
+        const { customerName, phoneNumber, appointmentDate, appointmentTime, serviceType } = req.body;
 
-        if (!customerName || !service || !date || !time)
-            return res.status(400).json({ error: "Missing booking details" });
+        if (!customerName || !phoneNumber || !appointmentDate || !appointmentTime || !serviceType) {
+            return res.status(400).json({ error: "Missing required booking fields" });
+        }
 
-        // Create booking in Firestore
+        // 1️⃣ Save booking to Firestore
         const newBooking = {
             customerName,
-            customerEmail,
-            service,
-            date,
-            time,
+            phoneNumber,
+            appointmentDate,
+            appointmentTime,
+            serviceType,
             status: "pending",
             createdAt: new Date(),
         };
+        const bookingRef = await db.collection("bookings").add(newBooking);
+        console.log("✅ Booking stored:", bookingRef.id);
 
-        const ref = await db.collection("bookings").add(newBooking);
-        console.log("📦 New booking saved:", ref.id);
+        // 2️⃣ Notify n8n webhook (WhatsApp trigger)
+        const webhookUrl = "https://flamingo1.app.n8n.cloud/webhook/appointment-booking";
 
-        // Trigger WhatsApp message to staff via n8n webhook
-        const n8nWebhook = process.env.N8N_WHATSAPP_WEBHOOK_URL;
-        if (!n8nWebhook)
-            return res.status(500).json({ error: "Missing N8N webhook URL" });
+        const n8nPayload = {
+            bookingId: bookingRef.id,
+            customerName,
+            phoneNumber,
+            appointmentDate,
+            appointmentTime,
+            serviceType,
+        };
 
-        await fetch(n8nWebhook, {
+        const n8nResponse = await fetch(webhookUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                phone: "+918296584278",
-                message: `💅 *New Booking Request!*
-🧍 Customer: ${customerName}
-💌 Email: ${customerEmail || "N/A"}
-💖 Service: ${service}
-📅 Date: ${date}
-⏰ Time: ${time}
-🆔 Booking ID: ${ref.id}
-
-Reply *Confirm ${ref.id}* or *Rebook ${ref.id}* in WhatsApp.`,
-            }),
+            body: JSON.stringify(n8nPayload),
         });
 
-        console.log("✅ WhatsApp notification sent via n8n");
+        if (!n8nResponse.ok) {
+            throw new Error(`n8n webhook failed: ${n8nResponse.status}`);
+        }
 
-        res.json({ success: true, bookingId: ref.id });
-    } catch (err) {
-        console.error("🔥 Booking error:", err);
-        res.status(500).json({ error: "Server error during booking" });
+        console.log("✅ n8n workflow triggered successfully.");
+
+        res.json({ success: true, message: "Booking created and WhatsApp notification sent." });
+    } catch (error) {
+        console.error("🔥 Booking or webhook error:", error);
+        res.status(500).json({ error: "Booking failed." });
     }
 });
 
