@@ -241,7 +241,7 @@ function MyBookingsScreen() {
     useEffect(() => {
         async function load() {
             if (!user) return;
-            const q = query(collection(db, 'bookings'), where('userId', '==', user.uid));
+            const q = query(collection(db, 'appointments'), where('userId', '==', user.uid));
             const snap = await getDocs(q);
             const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             setBookings(arr);

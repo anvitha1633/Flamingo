@@ -93,6 +93,7 @@ export default function ReceptionistDashboard({ navigation }) {
         }
         await addDoc(collection(db, "appointments"), {
             ...selectedAppointment,
+            customerId: auth.currentUser.uid,
             status: "pending",
             time: newTime,
             createdAt: new Date(),
