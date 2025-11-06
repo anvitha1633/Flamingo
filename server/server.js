@@ -164,15 +164,15 @@ app.post("/book", async (req, res) => {
         console.log("✅ Booking stored:", bookingRef.id);
 
         // 2️⃣ Notify n8n webhook (WhatsApp trigger)
-        const webhookUrl = "https://flamingo1.app.n8n.cloud/webhook/appointment-booking";
+        const webhookUrl = "https://flamingo1.app.n8n.cloud/webhook-test/appointment-booking";
 
         const n8nPayload = {
             bookingId: bookingRef.id,
             customerName,
-            phoneNumber,
             appointmentDate,
             appointmentTime,
             serviceType,
+            status: "pending"
         };
 
         const n8nResponse = await fetch(webhookUrl, {
