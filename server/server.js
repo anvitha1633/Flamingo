@@ -9,13 +9,7 @@ import admin from "firebase-admin";
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
-import {
-    collection,
-    addDoc,
-    doc,
-    getDoc,
-    updateDoc
-} from "firebase-admin/firestore";
+
 // --- Load .env ---
 dotenv.config();
 
@@ -63,11 +57,28 @@ app.get("/", (req, res) => {
 // --- FIRESTORE TEST ROUTE ---
 app.get("/test-db", async (req, res) => {
     try {
-        await addDoc(collection(db, "test"), { msg: "Hello Flamingo" });
+        await db.collection("test").add({ msg: "Hello Flamingo" });
         res.send("✅ Firestore write successful!");
     } catch (e) {
         console.error("🔥 Firestore write failed:", e.message);
         res.status(500).send("🔥 Firestore write failed");
+    }
+});
+
+app.post("/create-user", async (req, res) => {
+    try {
+        const { uid, email } = req.body;
+
+        await db.collection("users").doc(uid).set({
+            email,
+            role: "customer",
+            createdAt: new Date()
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "User creation failed" });
     }
 });
 
@@ -161,7 +172,7 @@ app.post("/book", async (req, res) => {
         console.log("📥 Received booking request:", req.body);
         // 1️⃣ Save booking to Firestore
         const newBooking = {
-            customerId: request.auth.uid,
+            customerUid: req.body.customerUid,
             customerName,
             customerEmail,
             appointmentDate,
@@ -170,8 +181,7 @@ app.post("/book", async (req, res) => {
             status: "pending",
             createdAt: new Date(),
         };
-        const bookingRef = await addDoc(collection(db, "bookings"), newBooking);
-
+        const bookingRef = await db.collection("bookings").add(newBooking);
         console.log("✅ Booking stored:", bookingRef.id);
 
         // 2️⃣ Notify n8n webhook (WhatsApp trigger)
@@ -214,12 +224,11 @@ app.post("/api/whatsapp/confirm", async (req, res) => {
         const { bookingId } = req.body;
         if (!bookingId) return res.status(400).send("Missing bookingId");
 
-        const bookingRef = doc(db, "bookings", bookingId);
-        const bookingSnap = await getDoc(bookingRef);
-        if (!bookingSnap.exists()) return res.status(404).send("Booking not found");
+        const ref = db.collection("bookings").doc(bookingId);
+        const booking = await ref.get();
+        if (!booking.exists) return res.status(404).send("Booking not found");
 
-        await updateDoc(bookingRef, { status: "confirmed" });
-
+        await ref.update({ status: "confirmed" });
         console.log(`✅ Booking ${bookingId} confirmed by staff`);
 
         res.json({ success: true });
@@ -235,14 +244,14 @@ app.post("/api/whatsapp/rebook", async (req, res) => {
         const { bookingId, newDate, newTime } = req.body;
         if (!bookingId) return res.status(400).send("Missing bookingId");
 
-        const bookingRef = doc(db, "bookings", bookingId);
-        const bookingSnap = await getDoc(bookingRef);
-        if (!bookingSnap.exists()) return res.status(404).send("Booking not found");
+        const ref = db.collection("bookings").doc(bookingId);
+        const booking = await ref.get();
+        if (!booking.exists) return res.status(404).send("Booking not found");
 
-        await updateDoc(bookingRef, {
+        await ref.update({
             status: "rebook-suggested",
-            ...(newDate && { date: newDate }),
-            ...(newTime && { time: newTime }),
+            ...(newDate && { appointmentDate: newDate }),
+            ...(newTime && { appointmentTime: newTime }),
         });
 
         console.log(`🔁 Booking ${bookingId} marked for rebooking`);

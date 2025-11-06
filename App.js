@@ -196,6 +196,7 @@ function BookScreen({ route, navigation }) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    customerId: auth.currentUser.uid,
                     customerName: user.displayName || "Unknown User",
                     customerEmail: user.email,
                     appointmentDate: date,
