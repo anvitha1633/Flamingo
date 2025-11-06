@@ -150,9 +150,9 @@ Remember: Flamingo AI represents a luxury beauty brand — be confident, kind, a
 app.post("/book", async (req, res) => {
     try {
         console.log("📥 Raw body:", req.body);
-        const { customerName, phoneNumber, appointmentDate, appointmentTime, serviceType } = req.body;
+        const { customerName, customerEmail, appointmentDate, appointmentTime, serviceType } = req.body;
 
-        if (!customerName || !phoneNumber || !appointmentDate || !appointmentTime || !serviceType) {
+        if (!customerName || !customerEmail || !appointmentDate || !appointmentTime || !serviceType) {
             return res.status(400).json({ error: "Missing required booking fields" });
         }
         console.log("📥 Received booking request:", req.body);
