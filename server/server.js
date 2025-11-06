@@ -149,7 +149,7 @@ app.post("/book", async (req, res) => {
         if (!customerName || !phoneNumber || !appointmentDate || !appointmentTime || !serviceType) {
             return res.status(400).json({ error: "Missing required booking fields" });
         }
-
+        console.log("📥 Received booking request:", req.body);
         // 1️⃣ Save booking to Firestore
         const newBooking = {
             customerName,
@@ -174,13 +174,16 @@ app.post("/book", async (req, res) => {
             serviceType,
             status: "pending"
         };
-
+        
+        console.log("📡 Sending payload to n8n:", n8nPayload);
         const n8nResponse = await fetch(webhookUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(n8nPayload),
         });
-
+        const responseText = await n8nResponse.text();
+        console.log("🛰️ n8n response status:", n8nResponse.status);
+        console.log("🛰️ n8n response text:", responseText);
         if (!n8nResponse.ok) {
             throw new Error(`n8n webhook failed: ${n8nResponse.status}`);
         }
