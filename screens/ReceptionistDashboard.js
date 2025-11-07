@@ -22,7 +22,7 @@ import {
     getDoc,
 } from "firebase/firestore";
 
-export default function ReceptionistDashboard({ navigation }) {
+export default function ReceptionistDashboard() {
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [userRole, setUserRole] = useState("");
@@ -31,29 +31,43 @@ export default function ReceptionistDashboard({ navigation }) {
     const [newTime, setNewTime] = useState("");
 
     useEffect(() => {
-        const fetchRole = async () => {
-            const user = auth.currentUser;
-            if (!user) return;
+        const user = auth.currentUser;
+        if (!user) return;
 
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (userDoc.exists()) {
-                setUserRole(userDoc.data().role);
+        getDoc(doc(db, "users", user.uid)).then((snap) => {
+            if (snap.exists()) {
+                setUserRole(snap.data().role);
             }
-        };
-        fetchRole();
+        });
     }, []);
 
-    // ✅ Fetch ALL bookings, not only "pending"
+    // ✅ Live Pending Bookings
     useEffect(() => {
-        const q = query(collection(db, "bookings"));
+        const q = query(
+            collection(db, "bookings"),
+            where("status", "==", "pending")
+        );
+
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            }));
-            setAppointments(data);
+            const list = [];
+
+            snapshot.docs.forEach((docSnap) => {
+                const data = docSnap.data();
+                if (!list.find((i) => i.id === docSnap.id)) {
+                    list.push({ id: docSnap.id, ...data });
+                }
+            });
+
+            list.sort(
+                (a, b) =>
+                    (b.createdAt?.toMillis?.() || 0) -
+                    (a.createdAt?.toMillis?.() || 0)
+            );
+
+            setAppointments(list);
             setLoading(false);
         });
+
         return unsubscribe;
     }, []);
 
@@ -61,52 +75,72 @@ export default function ReceptionistDashboard({ navigation }) {
         try {
             await updateDoc(doc(db, "bookings", id), {
                 status,
-                updatedBy: auth.currentUser.uid,
                 updatedAt: new Date(),
+                updatedBy: auth.currentUser.uid,
             });
-            Alert.alert("Updated!", `Status: ${status}`);
-        } catch (err) {
-            Alert.alert("Error", err.message);
+            Alert.alert("✅ Updated", `Status: ${status}`);
+        } catch (error) {
+            Alert.alert("❌ Error", error.message);
         }
     };
 
     const handleDelete = async (id) => {
         try {
             await deleteDoc(doc(db, "bookings", id));
-            // ✅ No need to manually update list — onSnapshot auto refreshes UI ✅
-            Alert.alert("Deleted Successfully");
-        } catch (err) {
-            Alert.alert("Error deleting", err.message);
+        } catch (e) {
+            Alert.alert("❌ Error", e.message);
         }
     };
 
-    const handleRebook = (appointment) => {
-        setSelectedAppointment(appointment);
+    const handleRebook = (appt) => {
+        setSelectedAppointment(appt);
         setShowRebookModal(true);
     };
 
     const saveRebook = async () => {
-        if (!newTime) return Alert.alert("Enter new time");
+        if (!newTime) return Alert.alert("Enter New Time");
 
         await addDoc(collection(db, "bookings"), {
             ...selectedAppointment,
-            status: "pending",
             appointmentTime: newTime,
+            status: "pending",
             createdAt: new Date(),
             rebookedFrom: selectedAppointment.id,
         });
 
         setShowRebookModal(false);
         setNewTime("");
-        Alert.alert("Rebooked!");
+        Alert.alert("✅ Rebooked Successfully");
     };
 
-    if (loading) return <ActivityIndicator size="large" />;
+    const StatusBadge = ({ status }) => (
+        <Text
+            style={{
+                paddingHorizontal: 6,
+                paddingVertical: 3,
+                borderRadius: 6,
+                fontSize: 12,
+                alignSelf: "flex-start",
+                backgroundColor:
+                    status === "pending"
+                        ? "#FFD966"
+                        : status === "confirmed"
+                            ? "#91E57D"
+                            : "#FF8A8A",
+                color: "#000",
+                marginTop: 4,
+            }}
+        >
+            {status.toUpperCase()}
+        </Text>
+    );
+
+    if (loading) return <ActivityIndicator size="large" style={{ marginTop: 40 }} />;
 
     return (
         <View style={{ flex: 1, padding: 20 }}>
-            <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 20 }}>
-                Pending Appointments
+            <Text style={{ fontSize: 22, fontWeight: "bold" }}>
+                Pending Bookings
             </Text>
 
             <FlatList
@@ -115,50 +149,113 @@ export default function ReceptionistDashboard({ navigation }) {
                 renderItem={({ item }) => (
                     <View
                         style={{
-                            padding: 15,
-                            marginBottom: 15,
-                            borderWidth: 1,
+                            padding: 16,
+                            backgroundColor: "#fff",
                             borderRadius: 10,
+                            marginBottom: 14,
+                            borderWidth: 0.6,
                         }}
                     >
-                        <Text style={{ fontSize: 16, fontWeight: "500" }}>
-                            {item.customerName}
-                        </Text>
-                        <Text>{item.serviceType}</Text>
-                        <Text>{item.appointmentDate} - {item.appointmentTime}</Text>
-                        <Text style={{ fontSize: 16, fontWeight: "500" }}>
-                            {item.customerEmail}
+                        <Text style={{ fontSize: 16, fontWeight: "600" }}>
+                            {item.customerEmail || "No Email"}
                         </Text>
 
-                        <Text style={{ color: item.status === "confirmed" ? "green" : item.status === "cancelled" ? "red" : "orange" }}>
-                            Status: {item.status}
-                        </Text>
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
-                            <Button title="Confirm" onPress={() => handleUpdateStatus(item.id, "confirmed")} />
-                            <Button title="Reject" color="orange" onPress={() => handleUpdateStatus(item.id, "cancelled")} />
-                        </View>
+                        <StatusBadge status={item.status} />
 
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
-                            <Button title="Rebook" onPress={() => handleRebook(item)} />
-                            <Button title="Delete" color="red" onPress={() => handleDelete(item.id)} />
-                        </View>
+                        <Text style={{ marginTop: 4, color: "#555" }}>
+                            {item.serviceType}
+                        </Text>
+
+                        <Text style={{ color: "#666" }}>
+                            {item.appointmentDate} – {item.appointmentTime}
+                        </Text>
+
+                        {userRole === "receptionist" && (
+                            <>
+                                <View
+                                    style={{
+                                        flexDirection: "row",
+                                        justifyContent: "space-between",
+                                        marginTop: 10,
+                                    }}
+                                >
+                                    <Button
+                                        title="Confirm ✅"
+                                        onPress={() =>
+                                            handleUpdateStatus(item.id, "confirmed")
+                                        }
+                                    />
+                                    <Button
+                                        title="Reject ❌"
+                                        color="orange"
+                                        onPress={() =>
+                                            handleUpdateStatus(item.id, "cancelled")
+                                        }
+                                    />
+                                </View>
+
+                                <View
+                                    style={{
+                                        flexDirection: "row",
+                                        justifyContent: "space-between",
+                                        marginTop: 8,
+                                    }}
+                                >
+                                    <Button
+                                        title="Rebook 🔁"
+                                        onPress={() => handleRebook(item)}
+                                    />
+                                    <Button
+                                        title="Delete 🗑️"
+                                        color="red"
+                                        onPress={() => handleDelete(item.id)}
+                                    />
+                                </View>
+                            </>
+                        )}
                     </View>
                 )}
             />
 
             {/* ✅ Rebook Modal */}
-            <Modal visible={showRebookModal} transparent>
-                <View style={{ flex: 1, backgroundColor: "#00000099", justifyContent: "center" }}>
-                    <View style={{ backgroundColor: "#fff", padding: 20, margin: 20, borderRadius: 10 }}>
+            <Modal visible={showRebookModal} transparent animationType="fade">
+                <View
+                    style={{
+                        flex: 1,
+                        backgroundColor: "#00000088",
+                        justifyContent: "center",
+                        padding: 20,
+                    }}
+                >
+                    <View
+                        style={{
+                            backgroundColor: "#fff",
+                            padding: 20,
+                            borderRadius: 10,
+                        }}
+                    >
                         <Text>Enter New Time:</Text>
                         <TextInput
-                            placeholder="e.g. 04:00 PM"
+                            placeholder="e.g. 4:00 PM"
                             value={newTime}
                             onChangeText={setNewTime}
-                            style={{ borderWidth: 1, padding: 10, marginTop: 10 }}
+                            style={{
+                                borderWidth: 1,
+                                borderRadius: 8,
+                                marginTop: 10,
+                                padding: 10,
+                            }}
                         />
-                        <Button title="Save" onPress={saveRebook} />
-                        <Button title="Cancel" onPress={() => setShowRebookModal(false)} />
+                        <View style={{ marginTop: 10 }}>
+                            <Button title="Save" onPress={saveRebook} />
+                        </View>
+                        <View style={{ marginTop: 10 }}>
+                            <Button
+                                title="Cancel"
+                                color="gray"
+                                onPress={() => setShowRebookModal(false)}
+                            />
+                        </View>
                     </View>
                 </View>
             </Modal>
