@@ -209,7 +209,7 @@ function BookScreen({ route, navigation }) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    customerId: auth.currentUser.uid,
+                    customerId: user.uid,
                     customerName: user.displayName || "Unknown User",
                     customerEmail: user.email,
                     appointmentDate: date,
@@ -252,14 +252,12 @@ function MyBookingsScreen() {
     const user = auth.currentUser;
 
     useEffect(() => {
-        async function load() {
-            if (!user) return;
-            const q = query(collection(db, 'appointments'), where('customerId', '==', user.uid));
-            const snap = await getDocs(q);
-            const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setBookings(arr);
-        }
-        load();
+        if (!user) return;
+        const q = query(collection(db, 'bookings'), where('customerUid', '==', user.uid));
+        const unsub = onSnapshot(q, snap => {
+            setBookings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+        return unsub;
     }, [user]);
 
     return (
@@ -270,8 +268,8 @@ function MyBookingsScreen() {
                 keyExtractor={(i) => i.id}
                 renderItem={({ item }) => (
                     <View style={{ padding: 10, borderWidth: 1, marginBottom: 8 }}>
-                        <Text>{item.serviceName}</Text>
-                        <Text>{item.date} {item.time}</Text>
+                        <Text>{item.serviceType}</Text>
+                        <Text>{item.appointmentDate} {item.appointmentTime}</Text>
                         <Text>Status: {item.status}</Text>
                     </View>
                 )}
