@@ -43,11 +43,14 @@ export default function ReceptionistDashboard({ navigation }) {
         fetchRole();
     }, []);
 
-    // ✅ Query pending bookings correctly!
+    // ✅ Fetch ALL bookings, not only "pending"
     useEffect(() => {
-        const q = query(collection(db, "bookings"), where("status", "==", "pending"));
+        const q = query(collection(db, "bookings"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+            const data = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            }));
             setAppointments(data);
             setLoading(false);
         });
@@ -68,8 +71,13 @@ export default function ReceptionistDashboard({ navigation }) {
     };
 
     const handleDelete = async (id) => {
-        await deleteDoc(doc(db, "bookings", id));
-        Alert.alert("Deleted");
+        try {
+            await deleteDoc(doc(db, "bookings", id));
+            // ✅ No need to manually update list — onSnapshot auto refreshes UI ✅
+            Alert.alert("Deleted Successfully");
+        } catch (err) {
+            Alert.alert("Error deleting", err.message);
+        }
     };
 
     const handleRebook = (appointment) => {
@@ -116,10 +124,15 @@ export default function ReceptionistDashboard({ navigation }) {
                         <Text style={{ fontSize: 16, fontWeight: "500" }}>
                             {item.customerName}
                         </Text>
-                        <Text>{item.customer}</Text>
                         <Text>{item.serviceType}</Text>
                         <Text>{item.appointmentDate} - {item.appointmentTime}</Text>
+                        <Text style={{ fontSize: 16, fontWeight: "500" }}>
+                            {item.customerEmail}
+                        </Text>
 
+                        <Text style={{ color: item.status === "confirmed" ? "green" : item.status === "cancelled" ? "red" : "orange" }}>
+                            Status: {item.status}
+                        </Text>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
                             <Button title="Confirm" onPress={() => handleUpdateStatus(item.id, "confirmed")} />
                             <Button title="Reject" color="orange" onPress={() => handleUpdateStatus(item.id, "cancelled")} />
