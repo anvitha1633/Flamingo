@@ -66,7 +66,19 @@ function SignUpScreen() {
 
     async function signUp() {
         try {
-            await createUserWithEmailAndPassword(auth, email, pass);
+            const cred = await createUserWithEmailAndPassword(auth, email, pass);
+            const user = cred.user;
+
+            // Create Firestore record via backend
+            await fetch("https://flamingo-ctga.onrender.com/create-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    uid: user.uid,
+                    email: user.email
+                }),
+            });
+
             Alert.alert('Account created');
         } catch (e) {
             Alert.alert('Sign up error', e.message);
