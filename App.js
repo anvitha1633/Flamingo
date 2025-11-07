@@ -211,7 +211,7 @@ function BookScreen({ route, navigation }) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     customerId: user.uid,
-                    customerName: user.displayName || "Unknown User",
+                    customerName: user.displayName || data.customerEmail.split('@')[0],
                     customerEmail: user.email,
                     appointmentDate: date,
                     appointmentTime: time,
@@ -265,6 +265,7 @@ function MyBookingsScreen() {
                 const data = d.data();
                 return {
                     id: d.id,
+                    customer: data.customerEmail, // ✅ Show email instead of name
                     serviceName: data.serviceType, // ✅ map to UI field
                     date: data.appointmentDate,    // ✅ map to UI field
                     time: data.appointmentTime,    // ✅ map to UI field

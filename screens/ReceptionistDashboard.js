@@ -116,6 +116,7 @@ export default function ReceptionistDashboard({ navigation }) {
                         <Text style={{ fontSize: 16, fontWeight: "500" }}>
                             {item.customerName}
                         </Text>
+                        <Text>{item.customer}</Text>
                         <Text>{item.serviceType}</Text>
                         <Text>{item.appointmentDate} - {item.appointmentTime}</Text>
 
