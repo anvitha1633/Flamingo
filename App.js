@@ -10,6 +10,7 @@ import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import axios from 'axios';
 import { SERVICES } from './services';
 import { doc, getDoc } from 'firebase/firestore';
+import { onSnapshot } from "firebase/firestore";
 
 const Stack = createNativeStackNavigator();
 const AI_BACKEND_URL = 'https://your-backend.example.com/ai-chat'; // replace with your deployed backend URL
@@ -253,12 +254,30 @@ function MyBookingsScreen() {
 
     useEffect(() => {
         if (!user) return;
-        const q = query(collection(db, 'bookings'), where('customerUid', '==', user.uid));
+
+        const q = query(
+            collection(db, 'appointments'),
+            where('customerEmail', '==', user.email) // ✅ matching Firestore field
+        );
+
         const unsub = onSnapshot(q, snap => {
-            setBookings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            const arr = snap.docs.map(d => {
+                const data = d.data();
+                return {
+                    id: d.id,
+                    serviceName: data.serviceType, // ✅ map to UI field
+                    date: data.appointmentDate,    // ✅ map to UI field
+                    time: data.appointmentTime,    // ✅ map to UI field
+                    status: data.status || "pending"
+                };
+            });
+
+            setBookings(arr);
         });
+
         return unsub;
     }, [user]);
+
 
     return (
         <View style={{ flex: 1, padding: 20 }}>

@@ -25,12 +25,11 @@ import {
 export default function ReceptionistDashboard({ navigation }) {
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [userRole, setUserRole] = useState("");   // ✅ New state
+    const [userRole, setUserRole] = useState("");
     const [showRebookModal, setShowRebookModal] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [newTime, setNewTime] = useState("");
 
-    // ✅ Fetch role from Firestore
     useEffect(() => {
         const fetchRole = async () => {
             const user = auth.currentUser;
@@ -44,9 +43,9 @@ export default function ReceptionistDashboard({ navigation }) {
         fetchRole();
     }, []);
 
-    // Fetch only pending appointments
+    // ✅ Query pending bookings correctly!
     useEffect(() => {
-        const q = query(collection(db, "appointments"), where("status", "==", "pending"));
+        const q = query(collection(db, "bookings"), where("status", "==", "pending"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
             setAppointments(data);
@@ -55,30 +54,22 @@ export default function ReceptionistDashboard({ navigation }) {
         return unsubscribe;
     }, []);
 
-    const handleUpdateStatus = async (id, newStatus) => {
+    const handleUpdateStatus = async (id, status) => {
         try {
-            const receptionistId = auth.currentUser?.uid || "manual";
-            await updateDoc(doc(db, "appointments", id), {
-                status: newStatus,
-                updatedBy: receptionistId,
+            await updateDoc(doc(db, "bookings", id), {
+                status,
+                updatedBy: auth.currentUser.uid,
                 updatedAt: new Date(),
             });
-            Alert.alert("Success", `Appointment ${newStatus}`);
-        } catch (error) {
-            console.error(error);
-            Alert.alert("Error", "Could not update status.");
+            Alert.alert("Updated!", `Status: ${status}`);
+        } catch (err) {
+            Alert.alert("Error", err.message);
         }
     };
 
     const handleDelete = async (id) => {
-        Alert.alert("Delete Appointment", "Are you sure?", [
-            { text: "Cancel" },
-            {
-                text: "Delete",
-                onPress: async () => await deleteDoc(doc(db, "appointments", id)),
-                style: "destructive",
-            },
-        ]);
+        await deleteDoc(doc(db, "bookings", id));
+        Alert.alert("Deleted");
     };
 
     const handleRebook = (appointment) => {
@@ -87,39 +78,28 @@ export default function ReceptionistDashboard({ navigation }) {
     };
 
     const saveRebook = async () => {
-        if (!newTime) {
-            Alert.alert("Enter new time");
-            return;
-        }
-        await addDoc(collection(db, "appointments"), {
+        if (!newTime) return Alert.alert("Enter new time");
+
+        await addDoc(collection(db, "bookings"), {
             ...selectedAppointment,
-            customerId: auth.currentUser.uid,
             status: "pending",
-            time: newTime,
+            appointmentTime: newTime,
             createdAt: new Date(),
             rebookedFrom: selectedAppointment.id,
-            updatedBy: auth.currentUser?.uid,
         });
+
         setShowRebookModal(false);
         setNewTime("");
-        Alert.alert("Success", "Rebooked!");
+        Alert.alert("Rebooked!");
     };
 
-    if (loading) return <ActivityIndicator size="large" style={{ marginTop: 50 }} />;
+    if (loading) return <ActivityIndicator size="large" />;
 
     return (
         <View style={{ flex: 1, padding: 20 }}>
             <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 20 }}>
                 Pending Appointments
             </Text>
-
-            {/* ✅ Show Button only for Receptionist */}
-            {userRole === "receptionist" && (
-                <Button
-                    title="Receptionist Special Button"
-                    onPress={() => navigation.navigate("YourNextScreen")}
-                />
-            )}
 
             <FlatList
                 data={appointments}
@@ -131,25 +111,43 @@ export default function ReceptionistDashboard({ navigation }) {
                             marginBottom: 15,
                             borderWidth: 1,
                             borderRadius: 10,
-                            borderColor: "#ddd",
-                            backgroundColor: "#fff",
                         }}
                     >
-                        <Text style={{ fontSize: 16, fontWeight: "500" }}>{item.customerName}</Text>
-                        <Text style={{ color: "#555" }}>Time: {item.time}</Text>
+                        <Text style={{ fontSize: 16, fontWeight: "500" }}>
+                            {item.customerName}
+                        </Text>
+                        <Text>{item.serviceType}</Text>
+                        <Text>{item.appointmentDate} - {item.appointmentTime}</Text>
 
-                        <View style={{ flexDirection: "row", justifyContent: "space-around", marginTop: 10 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
                             <Button title="Confirm" onPress={() => handleUpdateStatus(item.id, "confirmed")} />
                             <Button title="Reject" color="orange" onPress={() => handleUpdateStatus(item.id, "cancelled")} />
                         </View>
 
-                        <View style={{ flexDirection: "row", justifyContent: "space-around", marginTop: 10 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
                             <Button title="Rebook" onPress={() => handleRebook(item)} />
                             <Button title="Delete" color="red" onPress={() => handleDelete(item.id)} />
                         </View>
                     </View>
                 )}
             />
+
+            {/* ✅ Rebook Modal */}
+            <Modal visible={showRebookModal} transparent>
+                <View style={{ flex: 1, backgroundColor: "#00000099", justifyContent: "center" }}>
+                    <View style={{ backgroundColor: "#fff", padding: 20, margin: 20, borderRadius: 10 }}>
+                        <Text>Enter New Time:</Text>
+                        <TextInput
+                            placeholder="e.g. 04:00 PM"
+                            value={newTime}
+                            onChangeText={setNewTime}
+                            style={{ borderWidth: 1, padding: 10, marginTop: 10 }}
+                        />
+                        <Button title="Save" onPress={saveRebook} />
+                        <Button title="Cancel" onPress={() => setShowRebookModal(false)} />
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
