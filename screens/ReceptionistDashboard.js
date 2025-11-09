@@ -92,12 +92,14 @@ export default function ReceptionistDashboard() {
     const saveRebook = async () => {
         if (!newTime) return Alert.alert("Enter New Time");
 
+        const { id, ...rest } = selectedAppointment;
+
         await addDoc(collection(db, "bookings"), {
-            ...selectedAppointment,
+            ...rest,
             appointmentTime: newTime,
             status: "pending",
             createdAt: new Date(),
-            rebookedFrom: selectedAppointment.id,
+            rebookedFrom: id,
         });
 
         setShowRebookModal(false);
@@ -239,7 +241,7 @@ export default function ReceptionistDashboard() {
                             }}
                         />
                         <View style={{ marginTop: 10 }}>
-                            <Button title="Save" onPress={saveRebook} />
+                            <Button title="Save" onPress={saveRebook} disabled={!newTime} />
                         </View>
                         <View style={{ marginTop: 10 }}>
                             <Button

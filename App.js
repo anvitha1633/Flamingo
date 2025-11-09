@@ -1,6 +1,9 @@
 // App.js — Flamingo Nails Expo React Native prototype
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, FlatList, TouchableOpacity, Alert, Image, StyleSheet } from 'react-native';
+import {
+    View, Text, TextInput, Button, FlatList, TouchableOpacity, Alert, Image, StyleSheet, SafeAreaView,
+    ScrollView, ActivityIndicator
+} from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { auth, db } from './firebaseConfig';
@@ -12,7 +15,15 @@ import { SERVICES } from './services';
 import { doc, getDoc } from 'firebase/firestore';
 import { onSnapshot } from "firebase/firestore";
 import { Linking } from 'react-native';
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { Tab, Tabs, TabScreen } from "react-native-paper-tabs";
+import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
+import { useWindowDimensions } from 'react-native';
+import { Provider as PaperProvider, Card } from 'react-native-paper';
+import { LinearGradient } from "expo-linear-gradient";
+import { MaterialIcons } from "@expo/vector-icons";
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import * as Google from "expo-auth-session/providers/google";
 
 const Stack = createNativeStackNavigator();
 // ✅ Import logo image
@@ -66,50 +77,77 @@ function SignInScreen({ navigation }) {
 
 // ------------------ SIGN UP ------------------
 function SignUpScreen() {
-    const [email, setEmail] = useState('');
-    const [pass, setPass] = useState('');
+  const [phone, setPhone] = useState("");
+  const [googleResponse, setGoogleResponse] = useState(null);
 
-    async function signUp() {
-        try {
-            const cred = await createUserWithEmailAndPassword(auth, email, pass);
-            const user = cred.user;
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    expoClientId: "<YOUR_EXPO_CLIENT_ID>",
+    iosClientId: "<YOUR_IOS_CLIENT_ID>",
+    androidClientId: "<YOUR_ANDROID_CLIENT_ID>",
+  });
 
-            // Create Firestore record via backend
-            await fetch("https://flamingo-ctga.onrender.com/create-user", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    uid: user.uid,
-                    email: user.email
-                }),
-            });
-
-            Alert.alert('Account created');
-        } catch (e) {
-            Alert.alert('Sign up error', e.message);
-        }
+  // Handle Google response
+  useEffect(() => {
+    if (response?.type === "success") {
+      setGoogleResponse(response); // Save response to use after phone is entered
     }
+  }, [response]);
 
-    return (
-        <View style={{ padding: 20, flex: 1, justifyContent: 'center' }}>
-            <Text style={{ fontSize: 24, marginBottom: 10 }}>Create account</Text>
-            <TextInput
-                placeholder="Email"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                style={{ borderWidth: 1, padding: 8, marginBottom: 10 }}
-            />
-            <TextInput
-                placeholder="Password"
-                value={pass}
-                onChangeText={setPass}
-                secureTextEntry
-                style={{ borderWidth: 1, padding: 8, marginBottom: 10 }}
-            />
-            <Button title="Sign up" onPress={signUp} />
-        </View>
-    );
+  const handleSignUp = async () => {
+    if (!phone) return Alert.alert("Phone number is required");
+
+    if (!googleResponse) return Alert.alert("Please sign in with Google first");
+
+    try {
+      const { id_token } = googleResponse.params;
+      const credential = GoogleAuthProvider.credential(id_token);
+
+      const userCredential = await signInWithCredential(auth, credential);
+      const user = userCredential.user;
+
+      // Send user info to backend (Firestore)
+      await fetch("https://flamingo-ctga.onrender.com/create-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          phone: phone,
+        }),
+      });
+
+      Alert.alert("✅ Signed up successfully!");
+    } catch (e) {
+      Alert.alert("Sign-up error", e.message);
+    }
+  };
+
+  return (
+    <View style={{ padding: 20, flex: 1, justifyContent: "center" }}>
+      <Text style={{ fontSize: 24, marginBottom: 10 }}>Sign Up</Text>
+
+      {/* Phone Number Input */}
+      <TextInput
+        placeholder="Phone Number"
+        value={phone}
+        onChangeText={setPhone}
+        keyboardType="phone-pad"
+        style={{ borderWidth: 1, padding: 8, marginBottom: 20 }}
+      />
+
+      {/* Google Sign-In Button */}
+      <Button
+        title="Sign In with Google"
+        disabled={!request}
+        onPress={() => promptAsync()}
+      />
+
+      <View style={{ height: 20 }} />
+
+      {/* Complete Sign-Up */}
+      <Button title="Complete Sign-Up" onPress={handleSignUp} />
+    </View>
+  );
 }
 
 // ------------------ HOME ------------------
@@ -425,11 +463,12 @@ function ServicesScreen({ navigation }) {
 // ------------------ BOOK ------------------
 function BookScreen({ route, navigation }) {
     const { service } = route.params;
-    const [date, setDate] = useState(null);
-    const [time, setTime] = useState(null);
+    const user = auth.currentUser;
+
+    const [date, setDate] = useState("");
+    const [time, setTime] = useState("");
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
     const [isTimePickerVisible, setTimePickerVisible] = useState(false);
-    const user = auth.currentUser;
 
     const showDatePicker = () => setDatePickerVisible(true);
     const hideDatePicker = () => setDatePickerVisible(false);
@@ -437,7 +476,7 @@ function BookScreen({ route, navigation }) {
     const hideTimePicker = () => setTimePickerVisible(false);
 
     const handleConfirmDate = (pickedDate) => {
-        setDate(pickedDate.toISOString().split("T")[0]); // YYYY-MM-DD
+        setDate(pickedDate.toISOString().split("T")[0]);
         hideDatePicker();
     };
 
@@ -451,8 +490,8 @@ function BookScreen({ route, navigation }) {
     };
 
     async function confirmBooking() {
-        if (!user) return Alert.alert("Please sign in first");
-        if (!date || !time) return Alert.alert("Please select date and time");
+        if (!user) return Alert.alert("Please sign in first 💅");
+        if (!date || !time) return Alert.alert("Please select both date and time");
 
         try {
             await fetch("https://flamingo-ctga.onrender.com/book", {
@@ -468,10 +507,7 @@ function BookScreen({ route, navigation }) {
                 }),
             });
 
-            Alert.alert(
-                "Booking Confirmed 💅",
-                `${service.name}\n${date} at ${time}`
-            );
+            Alert.alert("Booking Confirmed 💖", `${service.name}\n${date} at ${time}`);
             navigation.popToTop();
         } catch (e) {
             Alert.alert("Error", e.message);
@@ -480,33 +516,58 @@ function BookScreen({ route, navigation }) {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>Book {service.name}</Text>
+            <Image source={require("./assets/logo.png")} style={styles.logo} />
 
-            <TouchableOpacity style={styles.selectBtn} onPress={showDatePicker}>
-                <Text style={styles.btnText}>
-                    {date ? `📅 ${date}` : "Select Date"}
-                </Text>
+            <Text style={styles.title}>Book {service.name}</Text>
+            <Text style={styles.subtitle}>💅 Choose your perfect time slot</Text>
+
+            {/* Choose Date */}
+            <TouchableOpacity onPress={showDatePicker} activeOpacity={0.85}>
+                <LinearGradient
+                    colors={["#FF80B5", "#FF1493"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.optionBtn}
+                >
+                    <Text style={styles.optionText}>
+                        📅 {date ? date : "Choose Date"}
+                    </Text>
+                </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.selectBtn} onPress={showTimePicker}>
-                <Text style={styles.btnText}>
-                    {time ? `⏰ ${time}` : "Select Time"}
-                </Text>
+            {/* Choose Time */}
+            <TouchableOpacity onPress={showTimePicker} activeOpacity={0.85}>
+                <LinearGradient
+                    colors={["#FF80B5", "#FF1493"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.optionBtn}
+                >
+                    <Text style={styles.optionText}>
+                        ⏰ {time ? time : "Choose Time"}
+                    </Text>
+                </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.confirmBtn} onPress={confirmBooking}>
-                <Text style={styles.confirmText}>Confirm Booking 💖</Text>
+            {/* Confirm Booking */}
+            <TouchableOpacity onPress={confirmBooking} activeOpacity={0.85}>
+                <LinearGradient
+                    colors={["#FF80B5", "#FF1493"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.confirmBtn}
+                >
+                    <Text style={styles.confirmText}>💖 Confirm Booking</Text>
+                </LinearGradient>
             </TouchableOpacity>
 
-            {/* Date Picker */}
+            {/* Date & Time Pickers */}
             <DateTimePickerModal
                 isVisible={isDatePickerVisible}
                 mode="date"
                 onConfirm={handleConfirmDate}
                 onCancel={hideDatePicker}
             />
-
-            {/* Time Picker */}
             <DateTimePickerModal
                 isVisible={isTimePickerVisible}
                 mode="time"
@@ -520,53 +581,81 @@ function BookScreen({ route, navigation }) {
 const styles1 = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#FFF5F8",
-        padding: 20,
-        justifyContent: "center",
+        backgroundColor: "#FFE6F0",
         alignItems: "center",
+        paddingTop: 40,
     },
-    header: {
-        fontSize: 24,
+    logo: {
+        width: 110,
+        height: 110,
+        borderRadius: 20,
+        marginBottom: 10,
+    },
+    title: {
+        fontSize: 22,
         fontWeight: "700",
-        color: "#D63384",
-        marginBottom: 30,
-        textAlign: "center",
+        color: "#C2185B",
     },
-    selectBtn: {
-        width: "85%",
-        backgroundColor: "#FFC0CB",
-        paddingVertical: 14,
-        borderRadius: 25,
+    subtitle: {
+        fontSize: 15,
+        color: "#555",
+        marginBottom: 30,
+    },
+    optionBtn: {
+        width: 260,
+        borderRadius: 30,
+        paddingVertical: 12,
         alignItems: "center",
-        marginVertical: 8,
+        marginVertical: 10,
         shadowColor: "#000",
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.15,
+        shadowOffset: { width: 0, height: 3 },
         shadowRadius: 5,
         elevation: 3,
     },
-    btnText: {
-        fontSize: 16,
+    optionText: {
         color: "#fff",
-        fontWeight: "600",
+        fontWeight: "bold",
+        fontSize: 16,
     },
     confirmBtn: {
-        marginTop: 30,
-        backgroundColor: "#FF69B4",
-        paddingVertical: 15,
-        width: "85%",
-        borderRadius: 25,
+        marginTop: 20,
+        width: 260,
+        paddingVertical: 14,
+        borderRadius: 35,
         alignItems: "center",
+        elevation: 5,
     },
     confirmText: {
         color: "#fff",
         fontSize: 18,
-        fontWeight: "700",
+        fontWeight: "bold",
+    },
+    summary: {
+        marginTop: 30,
+        alignItems: "center",
+        backgroundColor: "#fff",
+        padding: 15,
+        borderRadius: 20,
+        width: "85%",
+        elevation: 4,
+    },
+    summaryTitle: {
+        fontSize: 16,
+        fontWeight: "bold",
+        color: "#C2185B",
+        marginBottom: 8,
+    },
+    summaryItem: {
+        fontSize: 14,
+        color: "#333",
     },
 });
 
 // ------------------ MY BOOKINGS ------------------
 function MyBookingsScreen() {
     const [bookings, setBookings] = useState([]);
+    const [loading, setLoading] = useState(true);
     const user = auth.currentUser;
 
     useEffect(() => {
@@ -574,46 +663,176 @@ function MyBookingsScreen() {
 
         const q = query(
             collection(db, "bookings"),
-            where('customerEmail', '==', user.email) // ✅ matching Firestore field
+            where("customerEmail", "==", user.email)
         );
 
-        const unsub = onSnapshot(q, snap => {
-            const arr = snap.docs.map(d => {
+        const unsub = onSnapshot(q, (snap) => {
+            const arr = snap.docs.map((d) => {
                 const data = d.data();
                 return {
                     id: d.id,
-                    customer: data.customerEmail, // ✅ Show email instead of name
-                    serviceName: data.serviceType, // ✅ map to UI field
-                    date: data.appointmentDate,    // ✅ map to UI field
-                    time: data.appointmentTime,    // ✅ map to UI field
-                    status: data.status || "pending"
+                    serviceName: data.serviceType,
+                    date: data.appointmentDate,
+                    time: data.appointmentTime,
+                    status: data.status || "pending",
                 };
             });
-
             setBookings(arr);
+            setLoading(false);
         });
 
         return unsub;
     }, [user]);
 
+    const getStatusColor = (status) => {
+        switch (status) {
+            case "confirmed":
+                return ["#4ade80", "#22c55e"];
+            case "rebook-suggested":
+                return ["#facc15", "#eab308"];
+            default:
+                return ["#f87171", "#ef4444"];
+        }
+    };
+
+    const renderBooking = ({ item }) => (
+        <LinearGradient
+            colors={["#fff", "#fdf2f8"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.card}
+        >
+            <View style={styles.cardHeader}>
+                <MaterialIcons name="spa" size={26} color="#ec4899" />
+                <Text style={styles.service}>{item.serviceName}</Text>
+            </View>
+
+            <View style={styles.detailRow}>
+                <MaterialIcons name="calendar-today" size={20} color="#555" />
+                <Text style={styles.detailText}>{item.date}</Text>
+            </View>
+
+            <View style={styles.detailRow}>
+                <MaterialIcons name="access-time" size={20} color="#555" />
+                <Text style={styles.detailText}>{item.time}</Text>
+            </View>
+
+            <LinearGradient
+                colors={getStatusColor(item.status)}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statusBadge}
+            >
+                <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+            </LinearGradient>
+        </LinearGradient>
+    );
 
     return (
-        <View style={{ flex: 1, padding: 20 }}>
-            <Text style={{ fontSize: 20, marginBottom: 10 }}>My Bookings</Text>
-            <FlatList
-                data={bookings}
-                keyExtractor={(i) => i.id}
-                renderItem={({ item }) => (
-                    <View style={{ padding: 10, borderWidth: 1, marginBottom: 8 }}>
-                        <Text>{item.serviceName}</Text>
-                        <Text>{item.date} {item.time}</Text>
-                        <Text>Status: {item.status}</Text>
-                    </View>
-                )}
-            />
+        <View style={styles.container}>
+            <LinearGradient
+                colors={["#FF80B5", "#FF1493"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
+                <Text style={styles.headerTitle}>My Bookings 💅</Text>
+            </LinearGradient>
+
+            {loading ? (
+                <ActivityIndicator size="large" color="#FF1493" style={{ marginTop: 50 }} />
+            ) : bookings.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                    <MaterialIcons name="event-busy" size={45} color="#bbb" />
+                    <Text style={styles.emptyText}>No bookings yet</Text>
+                </View>
+            ) : (
+                <FlatList
+                    data={bookings}
+                    keyExtractor={(i) => i.id}
+                    renderItem={renderBooking}
+                    contentContainerStyle={styles.listContent}
+                />
+            )}
         </View>
     );
 }
+
+const styles2 = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: "#ffe4ec",
+    },
+    header: {
+        paddingVertical: 18,
+        alignItems: "center",
+        justifyContent: "center",
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        elevation: 4,
+    },
+    headerTitle: {
+        color: "#fff",
+        fontSize: 22,
+        fontWeight: "bold",
+    },
+    listContent: {
+        paddingVertical: 20,
+    },
+    card: {
+        marginHorizontal: 16,
+        marginBottom: 15,
+        borderRadius: 18,
+        padding: 18,
+        elevation: 3,
+        shadowColor: "#000",
+        shadowOpacity: 0.15,
+        shadowOffset: { width: 0, height: 3 },
+        shadowRadius: 6,
+    },
+    cardHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 8,
+    },
+    service: {
+        fontSize: 18,
+        fontWeight: "600",
+        marginLeft: 8,
+        color: "#c2185b",
+    },
+    detailRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginVertical: 3,
+    },
+    detailText: {
+        marginLeft: 8,
+        fontSize: 16,
+        color: "#444",
+    },
+    statusBadge: {
+        alignSelf: "flex-start",
+        marginTop: 10,
+        paddingVertical: 4,
+        paddingHorizontal: 14,
+        borderRadius: 12,
+    },
+    statusText: {
+        color: "#fff",
+        fontSize: 13,
+        fontWeight: "bold",
+    },
+    emptyContainer: {
+        alignItems: "center",
+        marginTop: 60,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: "#888",
+        marginTop: 10,
+    },
+});
 
 // ------------------ CHAT ------------------
 function ChatScreen() {
