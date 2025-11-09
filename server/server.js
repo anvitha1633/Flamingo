@@ -26,14 +26,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// Set role for a receptionist
-const setReceptionistRole = async (uid) => {
-    await admin.auth().setCustomUserClaims(uid, { role: "receptionist" });
-    console.log("✅ Role set for UID:", uid);
-};
-
-setReceptionistRole("CGsWYKCasKak1PbHzZy8jBCSTUN2");
-
 // --- Paths ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -71,6 +63,13 @@ try {
     console.error("🔥 Firebase initialization failed:", err);
 }
 
+// Set role for a receptionist
+const setReceptionistRole = async (uid) => {
+    await admin.auth().setCustomUserClaims(uid, { role: "receptionist" });
+    console.log("✅ Role set for UID:", uid);
+};
+
+setReceptionistRole("CGsWYKCasKak1PbHzZy8jBCSTUN2");
 // --- TEST ROUTE ---
 app.get("/", (req, res) => {
     res.send("💅 Flamingo Nails AI Backend with Gmail booking flow is running securely!");
