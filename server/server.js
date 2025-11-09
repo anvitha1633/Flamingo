@@ -40,8 +40,22 @@ const __dirname = path.dirname(__filename);
 
 // --- FIREBASE ADMIN INIT ---
 let db;
+let serviceAccount;
 try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    // Check if using Render or local
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+        // Render: JSON stored in environment variable
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    } else {
+        // Local dev: load from file
+        const __dirname = path.dirname(new URL(import.meta.url).pathname);
+        const filePath = path.join(__dirname, "serviceAccountKey.json");
+        if (fs.existsSync(filePath)) {
+            serviceAccount = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        } else {
+            console.error("❌ Firebase service account not found!");
+        }
+    }
 
     if (!getApps().length) {
         initializeApp({
