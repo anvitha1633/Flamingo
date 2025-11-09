@@ -517,7 +517,7 @@ function BookScreen({ route, navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const styles1 = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#FFF5F8",
