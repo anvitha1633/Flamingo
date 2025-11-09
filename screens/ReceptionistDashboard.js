@@ -41,30 +41,22 @@ export default function ReceptionistDashboard() {
         });
     }, []);
 
-    // ✅ Live Pending Bookings
+    // ✅ Live All Bookings
     useEffect(() => {
-        const q = query(
-            collection(db, "bookings"),
-            where("status", "==", "pending")
-        );
+        const q = query(collection(db, "bookings"));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const list = [];
-
-            snapshot.docs.forEach((docSnap) => {
-                const data = docSnap.data();
-                if (!list.find((i) => i.id === docSnap.id)) {
-                    list.push({ id: docSnap.id, ...data });
-                }
-            });
-
-            list.sort(
-                (a, b) =>
+            const results = snapshot.docs
+                .map(docSnap => ({
+                    id: docSnap.id,
+                    ...docSnap.data()
+                }))
+                .sort((a, b) =>
                     (b.createdAt?.toMillis?.() || 0) -
                     (a.createdAt?.toMillis?.() || 0)
-            );
+                );
 
-            setAppointments(list);
+            setAppointments(results);
             setLoading(false);
         });
 

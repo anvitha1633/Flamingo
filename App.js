@@ -1,6 +1,6 @@
 // App.js — Flamingo Nails Expo React Native prototype
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TextInput, Button, FlatList, TouchableOpacity, Alert, Image, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { auth, db } from './firebaseConfig';
@@ -11,8 +11,12 @@ import axios from 'axios';
 import { SERVICES } from './services';
 import { doc, getDoc } from 'firebase/firestore';
 import { onSnapshot } from "firebase/firestore";
+import { Linking } from 'react-native';
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 const Stack = createNativeStackNavigator();
+// ✅ Import logo image
+const logo = require('./assets/logo.png');
 const AI_BACKEND_URL = 'https://your-backend.example.com/ai-chat'; // replace with your deployed backend URL
 
 // ------------------ SIGN IN ------------------
@@ -117,7 +121,7 @@ function HomeScreen({ navigation }) {
         const unsub = onAuthStateChanged(auth, async (u) => {
             setUser(u);
             if (u) {
-                const ref = doc(db, "users", u.uid);
+                const ref = doc(db, 'users', u.uid);
                 const snap = await getDoc(ref);
                 if (snap.exists()) {
                     setRole(snap.data().role);
@@ -133,61 +137,283 @@ function HomeScreen({ navigation }) {
 
     async function doSignOut() {
         await signOut(auth);
-        Alert.alert("Signed out");
+        Alert.alert('Signed out');
     }
 
+    // 🔗 Open Google Maps links
+    const openMapMangalore = () => {
+        Linking.openURL('https://www.google.com/maps?q=Flamingo+Nails,+Mangalore');
+    };
+
+    const openMapManipal = () => {
+        Linking.openURL('https://www.google.com/maps?q=Flamingo+Nails,+Manipal');
+    };
+
     return (
-        <View style={{ flex: 1, padding: 20 }}>
-            <Text style={{ fontSize: 22 }}>Welcome to Flamingo Nails</Text>
-            <Text style={{ marginTop: 8 }}>Locations: Mangalore, Manipal</Text>
-            <View style={{ height: 12 }} />
+        <View style={styles.container}>
+            {/* 🦩 App Logo */}
+            <Image
+                source={require('./assets/logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+            />
 
-            <Button title="Book Appointment" onPress={() => navigation.navigate('Services')} />
-            <View style={{ height: 10 }} />
-            <Button title="Chat with AI Assistant" onPress={() => navigation.navigate('Chat')} />
-            <View style={{ height: 10 }} />
-            <Button title="My Bookings" onPress={() => navigation.navigate('MyBookings')} />
-            <View style={{ height: 20 }} />
+            {/* 🌸 Welcome text */}
+            <Text style={styles.title}>Welcome to Flamingo Nails</Text>
+            <Text style={styles.subtitle}>Where beauty meets perfection 💅</Text>
 
-            {user ? (
-                <>
-                    <Text>Signed in as: {user.email}</Text>
-                    <View style={{ height: 8 }} />
-                    <Button title="Sign out" onPress={doSignOut} />
+            {/* 🌺 Buttons */}
+            <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                    style={styles.button}
+                    onPress={() => navigation.navigate('Services')}
+                >
+                    <Text style={styles.buttonText}>💖 Book Appointment</Text>
+                </TouchableOpacity>
 
-                    {/* ✅ Only for Receptionist users */}
-                    {role === "receptionist" && (
-                        <>
-                            <View style={{ height: 10 }} />
-                            <Button
-                                title="Receptionist Dashboard"
-                                onPress={() => navigation.navigate('ReceptionistDashboard')}
-                            />
-                        </>
-                    )}
-                </>
-            ) : (
-                <Button title="Sign in / Sign up" onPress={() => navigation.navigate('SignIn')} />
-            )}
+                <TouchableOpacity
+                    style={styles.button}
+                    onPress={() => navigation.navigate('Chat')}
+                >
+                    <Text style={styles.buttonText}>💬 Chat with AI Assistant</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.button}
+                    onPress={() => navigation.navigate('MyBookings')}
+                >
+                    <Text style={styles.buttonText}>📅 My Bookings</Text>
+                </TouchableOpacity>
+
+                {/* 🧾 Receptionist Dashboard */}
+                {user && role === 'receptionist' && (
+                    <TouchableOpacity
+                        style={styles.button}
+                        onPress={() => navigation.navigate('ReceptionistDashboard')}
+                    >
+                        <Text style={styles.buttonText}>🪶 Receptionist Dashboard</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+
+            {/* 🌼 Footer Section */}
+            <View style={styles.footer}>
+                {user ? (
+                    <>
+                        <Text style={styles.userText}>Signed in as: {user.email}</Text>
+                        <TouchableOpacity onPress={doSignOut} style={styles.signOutBtn}>
+                            <Text style={styles.signOutText}>Sign out</Text>
+                        </TouchableOpacity>
+                    </>
+                ) : (
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('SignIn')}
+                        style={styles.signInBtn}
+                    >
+                        <Text style={styles.signOutText}>Sign in / Sign up</Text>
+                    </TouchableOpacity>
+                )}
+
+                {/* 📍Clickable locations */}
+                <View style={styles.locationContainer}>
+                    <TouchableOpacity onPress={openMapMangalore}>
+                        <Text style={styles.locationLink}>📍 Mangalore</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.separator}> • </Text>
+                    <TouchableOpacity onPress={openMapManipal}>
+                        <Text style={styles.locationLink}>📍 Manipal</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
         </View>
     );
 }
 
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#FFF5F8',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    logo: {
+        width: 150,
+        height: 150,
+        marginBottom: 15,
+    },
+    title: {
+        fontSize: 26,
+        fontWeight: '700',
+        color: '#D63384',
+        marginBottom: 5,
+        textAlign: 'center',
+    },
+    subtitle: {
+        fontSize: 16,
+        color: '#555',
+        textAlign: 'center',
+        marginBottom: 30,
+    },
+    buttonContainer: {
+        width: '100%',
+        alignItems: 'center',
+    },
+    button: {
+        width: '85%',
+        backgroundColor: '#FFC0CB',
+        borderRadius: 25,
+        paddingVertical: 14,
+        marginVertical: 8,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 4,
+    },
+    buttonText: {
+        fontSize: 16,
+        color: '#fff',
+        fontWeight: '600',
+    },
+    footer: {
+        position: 'absolute',
+        bottom: 40,
+        alignItems: 'center',
+    },
+    userText: {
+        fontSize: 14,
+        color: '#333',
+    },
+    signOutBtn: {
+        marginTop: 6,
+    },
+    signInBtn: {
+        backgroundColor: '#FF69B4',
+        borderRadius: 20,
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        marginTop: 10,
+    },
+    signOutText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    locationContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    locationLink: {
+        color: '#D63384',
+        fontWeight: 'bold',
+        textDecorationLine: 'underline',
+        fontSize: 15,
+    },
+    separator: {
+        color: '#888',
+        fontSize: 16,
+        marginHorizontal: 4,
+    },
+});
+
+
 // ------------------ SERVICES ------------------
 function ServicesScreen({ navigation }) {
+    // map service ID to local images
+    const serviceImages = {
+        nail_ext: require("./assets/services/nail_ext.png"),
+        nail_ext_feet: require("./assets/services/nail_ext_feet.png"),
+        overlay: require("./assets/services/overlay.png"),
+        gel_removal: require("./assets/services/gel_removal.png"),
+        nail_art_simple: require("./assets/services/nail_art_simple.png"),
+        nail_art_complex: require("./assets/services/nail_art_complex.png"),
+        lash_ext: require("./assets/services/lash_ext.png"),
+        manicure: require("./assets/services/manicure.png"),
+        pedicure: require("./assets/services/pedicure.png"),
+        hair: require("./assets/services/hair.png"),
+        eyebrows: require("./assets/services/eyebrows.png"),
+        Bridal: require("./assets/services/Bridal.png")
+    };
+
     return (
-        <View style={{ flex: 1, padding: 20 }}>
-            <Text style={{ fontSize: 20, marginBottom: 10 }}>Services</Text>
+        <View style={{ flex: 1, backgroundColor: "#fff5f8", padding: 20 }}>
+            {/* 🦩 Logo */}
+            <Image
+                source={require("./assets/logo.png")}
+                style={{
+                    width: 90,
+                    height: 90,
+                    alignSelf: "center",
+                    marginBottom: 10,
+                    borderRadius: 45,
+                }}
+                resizeMode="contain"
+            />
+
+            {/* Title */}
+            <Text
+                style={{
+                    fontSize: 26,
+                    fontWeight: "bold",
+                    color: "#ff69b4",
+                    textAlign: "center",
+                    marginBottom: 20,
+                }}
+            >
+                💅 Flamingo Nails Services
+            </Text>
+
+            {/* List of services */}
             <FlatList
                 data={SERVICES}
                 keyExtractor={(i) => i.id}
                 renderItem={({ item }) => (
                     <TouchableOpacity
-                        onPress={() => navigation.navigate('Book', { service: item })}
-                        style={{ padding: 12, borderWidth: 1, marginBottom: 8 }}
+                        onPress={() => navigation.navigate("Book", { service: item })}
+                        style={{
+                            backgroundColor: "#ffe6ef",
+                            borderRadius: 15,
+                            marginBottom: 16,
+                            overflow: "hidden",
+                            shadowColor: "#000",
+                            shadowOpacity: 0.1,
+                            shadowRadius: 4,
+                            elevation: 2,
+                        }}
                     >
-                        <Text style={{ fontSize: 16 }}>{item.name}</Text>
-                        <Text>Duration: {item.durationMins} mins • ₹{item.price}</Text>
+                        <Image
+                            source={serviceImages[item.id]}
+                            style={{ width: "100%", height: 160 }}
+                            resizeMode="cover"
+                        />
+
+                        <View style={{ padding: 15 }}>
+                            <Text
+                                style={{
+                                    fontSize: 18,
+                                    fontWeight: "600",
+                                    color: "#333",
+                                    marginBottom: 6,
+                                }}
+                            >
+                                {item.name}
+                            </Text>
+                            <Text style={{ color: "#555" }}>
+                                Duration: {item.durationMins} mins
+                            </Text>
+                            <Text
+                                style={{
+                                    color: "#000",
+                                    fontSize: 16,
+                                    fontWeight: "bold",
+                                    marginTop: 4,
+                                }}
+                            >
+                                ₹{item.price}
+                            </Text>
+                        </View>
                     </TouchableOpacity>
                 )}
             />
@@ -195,23 +421,46 @@ function ServicesScreen({ navigation }) {
     );
 }
 
+
 // ------------------ BOOK ------------------
 function BookScreen({ route, navigation }) {
     const { service } = route.params;
-    const [date, setDate] = useState('');
-    const [time, setTime] = useState('');
+    const [date, setDate] = useState(null);
+    const [time, setTime] = useState(null);
+    const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+    const [isTimePickerVisible, setTimePickerVisible] = useState(false);
     const user = auth.currentUser;
 
+    const showDatePicker = () => setDatePickerVisible(true);
+    const hideDatePicker = () => setDatePickerVisible(false);
+    const showTimePicker = () => setTimePickerVisible(true);
+    const hideTimePicker = () => setTimePickerVisible(false);
+
+    const handleConfirmDate = (pickedDate) => {
+        setDate(pickedDate.toISOString().split("T")[0]); // YYYY-MM-DD
+        hideDatePicker();
+    };
+
+    const handleConfirmTime = (pickedTime) => {
+        const formatted = pickedTime.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+        setTime(formatted);
+        hideTimePicker();
+    };
+
     async function confirmBooking() {
-        if (!user) { Alert.alert('Please sign in'); return; }
-        if (!date || !time) { Alert.alert('Pick date & time'); return; }
+        if (!user) return Alert.alert("Please sign in first");
+        if (!date || !time) return Alert.alert("Please select date and time");
+
         try {
             await fetch("https://flamingo-ctga.onrender.com/book", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     customerId: user.uid,
-                    customerName: user.displayName || data.customerEmail.split('@')[0],
+                    customerName: user.displayName || user.email.split("@")[0],
                     customerEmail: user.email,
                     appointmentDate: date,
                     appointmentTime: time,
@@ -219,33 +468,101 @@ function BookScreen({ route, navigation }) {
                 }),
             });
 
-            Alert.alert('Booking created', `Service: ${service.name}\n${date} ${time}`);
+            Alert.alert(
+                "Booking Confirmed 💅",
+                `${service.name}\n${date} at ${time}`
+            );
             navigation.popToTop();
         } catch (e) {
-            Alert.alert('Error', e.message);
+            Alert.alert("Error", e.message);
         }
     }
 
     return (
-        <View style={{ padding: 20 }}>
-            <Text style={{ fontSize: 20 }}>{service.name}</Text>
-            <TextInput
-                placeholder="YYYY-MM-DD (e.g. 2025-11-10)"
-                value={date}
-                onChangeText={setDate}
-                style={{ borderWidth: 1, padding: 8, marginTop: 12 }}
+        <View style={styles.container}>
+            <Text style={styles.header}>Book {service.name}</Text>
+
+            <TouchableOpacity style={styles.selectBtn} onPress={showDatePicker}>
+                <Text style={styles.btnText}>
+                    {date ? `📅 ${date}` : "Select Date"}
+                </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.selectBtn} onPress={showTimePicker}>
+                <Text style={styles.btnText}>
+                    {time ? `⏰ ${time}` : "Select Time"}
+                </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.confirmBtn} onPress={confirmBooking}>
+                <Text style={styles.confirmText}>Confirm Booking 💖</Text>
+            </TouchableOpacity>
+
+            {/* Date Picker */}
+            <DateTimePickerModal
+                isVisible={isDatePickerVisible}
+                mode="date"
+                onConfirm={handleConfirmDate}
+                onCancel={hideDatePicker}
             />
-            <TextInput
-                placeholder="HH:MM (24h, e.g. 15:30)"
-                value={time}
-                onChangeText={setTime}
-                style={{ borderWidth: 1, padding: 8, marginTop: 8 }}
+
+            {/* Time Picker */}
+            <DateTimePickerModal
+                isVisible={isTimePickerVisible}
+                mode="time"
+                onConfirm={handleConfirmTime}
+                onCancel={hideTimePicker}
             />
-            <View style={{ height: 12 }} />
-            <Button title="Confirm Booking" onPress={confirmBooking} />
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: "#FFF5F8",
+        padding: 20,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    header: {
+        fontSize: 24,
+        fontWeight: "700",
+        color: "#D63384",
+        marginBottom: 30,
+        textAlign: "center",
+    },
+    selectBtn: {
+        width: "85%",
+        backgroundColor: "#FFC0CB",
+        paddingVertical: 14,
+        borderRadius: 25,
+        alignItems: "center",
+        marginVertical: 8,
+        shadowColor: "#000",
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        elevation: 3,
+    },
+    btnText: {
+        fontSize: 16,
+        color: "#fff",
+        fontWeight: "600",
+    },
+    confirmBtn: {
+        marginTop: 30,
+        backgroundColor: "#FF69B4",
+        paddingVertical: 15,
+        width: "85%",
+        borderRadius: 25,
+        alignItems: "center",
+    },
+    confirmText: {
+        color: "#fff",
+        fontSize: 18,
+        fontWeight: "700",
+    },
+});
 
 // ------------------ MY BOOKINGS ------------------
 function MyBookingsScreen() {
@@ -256,7 +573,7 @@ function MyBookingsScreen() {
         if (!user) return;
 
         const q = query(
-            collection(db, 'appointments'),
+            collection(db, "bookings"),
             where('customerEmail', '==', user.email) // ✅ matching Firestore field
         );
 
@@ -288,8 +605,8 @@ function MyBookingsScreen() {
                 keyExtractor={(i) => i.id}
                 renderItem={({ item }) => (
                     <View style={{ padding: 10, borderWidth: 1, marginBottom: 8 }}>
-                        <Text>{item.serviceType}</Text>
-                        <Text>{item.appointmentDate} {item.appointmentTime}</Text>
+                        <Text>{item.serviceName}</Text>
+                        <Text>{item.date} {item.time}</Text>
                         <Text>Status: {item.status}</Text>
                     </View>
                 )}

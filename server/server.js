@@ -26,6 +26,14 @@ app.use((req, res, next) => {
     next();
 });
 
+// Set role for a receptionist
+const setReceptionistRole = async (uid) => {
+    await admin.auth().setCustomUserClaims(uid, { role: "receptionist" });
+    console.log("✅ Role set for UID:", uid);
+};
+
+setReceptionistRole("CGsWYKCasKak1PbHzZy8jBCSTUN2");
+
 // --- Paths ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
