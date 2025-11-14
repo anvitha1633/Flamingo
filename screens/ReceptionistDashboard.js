@@ -17,6 +17,7 @@ import {
     onSnapshot,
     updateDoc,
     doc,
+    setDoc,
     deleteDoc,
     addDoc,
     getDoc,
@@ -63,26 +64,67 @@ export default function ReceptionistDashboard() {
         return unsubscribe;
     }, []);
 
-    const handleUpdateStatus = async (id, status) => {
+    const handleUpdateStatus = async (appointment, newStatus) => {
         try {
-            await updateDoc(doc(db, "bookings", id), {
-                status,
-                updatedAt: new Date(),
-                updatedBy: auth.currentUser.uid,
+            const id = appointment.id;
+
+            if (!id) {
+                return Alert.alert("❌ Missing document id");
+            }
+
+            // 1️⃣ COPY to WrongBooking collection
+            await addDoc(collection(db, "WrongBooking"), {
+                ...appointment,
+                status: newStatus,
+                movedAt: new Date(),
+                movedBy: auth.currentUser.uid,
+                originalBookingId: id,
             });
-            Alert.alert("✅ Updated", `Status: ${status}`);
+
+            // 2️⃣ DELETE from bookings collection
+            await deleteDoc(doc(db, "bookings", id));
+
+            // 3️⃣ Remove from UI immediately
+            setAppointments(prev =>
+                prev.filter(item => item.id !== id)
+            );
+
+            Alert.alert("✅ Booking moved", `Status changed to ${newStatus}`);
         } catch (error) {
             Alert.alert("❌ Error", error.message);
         }
     };
 
-    const handleDelete = async (id) => {
+
+    const handleComplete = async (appointment) => {
         try {
+            const id = appointment?.id;
+
+            if (!id) {
+                console.log("DEBUG APPOINTMENT:", appointment);
+                return Alert.alert("❌ Error", "Missing document ID");
+            }
+
+            if (appointment.status !== "confirmed") {
+                return Alert.alert("Only confirmed bookings can be completed.");
+            }
+
+            // 1️⃣ Move to archived collection
+            await setDoc(doc(db, "archived", id), {
+                ...appointment,
+                completedAt: new Date(),
+            });
+
+            // 2️⃣ Remove from bookings
             await deleteDoc(doc(db, "bookings", id));
+
+            Alert.alert("✔️ Completed", "Booking moved to archive.");
         } catch (e) {
-            Alert.alert("❌ Error", e.message);
+            console.log("Complete Err:", e);
+            Alert.alert("❌ Error completing booking.");
         }
     };
+
 
     const handleRebook = (appt) => {
         setSelectedAppointment(appt);
@@ -132,7 +174,7 @@ export default function ReceptionistDashboard() {
     if (loading) return <ActivityIndicator size="large" style={{ marginTop: 40 }} />;
 
     return (
-        <View style={{ flex: 1, padding: 20 }}>
+        <View style={{ flex: 1, backgroundColor: "#fff", padding: 20 }}>
             <Text style={{ fontSize: 22, fontWeight: "bold" }}>
                 Pending Bookings
             </Text>
@@ -176,14 +218,14 @@ export default function ReceptionistDashboard() {
                                     <Button
                                         title="Confirm ✅"
                                         onPress={() =>
-                                            handleUpdateStatus(item.id, "confirmed")
+                                            handleUpdateStatus(item, "confirmed")
                                         }
                                     />
                                     <Button
                                         title="Reject ❌"
-                                        color="orange"
+                                        color="red"
                                         onPress={() =>
-                                            handleUpdateStatus(item.id, "cancelled")
+                                            handleUpdateStatus(item, "cancelled")
                                         }
                                     />
                                 </View>
@@ -197,12 +239,13 @@ export default function ReceptionistDashboard() {
                                 >
                                     <Button
                                         title="Rebook 🔁"
+                                        color="black"
                                         onPress={() => handleRebook(item)}
                                     />
                                     <Button
-                                        title="Delete 🗑️"
-                                        color="red"
-                                        onPress={() => handleDelete(item.id)}
+                                        title="Complete 🗑️"
+                                        color="green"
+                                        onPress={() => handleComplete(item)}
                                     />
                                 </View>
                             </>

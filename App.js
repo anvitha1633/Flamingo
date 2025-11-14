@@ -32,122 +32,210 @@ const AI_BACKEND_URL = 'https://your-backend.example.com/ai-chat'; // replace wi
 
 // ------------------ SIGN IN ------------------
 function SignInScreen({ navigation }) {
-    const [email, setEmail] = useState('');
-    const [pass, setPass] = useState('');
-    const [user, setUser] = useState(null);
-    const [role, setRole] = useState(null);
+    const [email, setEmail] = useState("");
+    const [pass, setPass] = useState("");
 
     async function signIn() {
         try {
             await signInWithEmailAndPassword(auth, email, pass);
-            Alert.alert('Sign in successful');
+            Alert.alert("✅ Sign in successful");
             navigation.reset({
                 index: 0,
-                routes: [{ name: 'Home' }], // or any screen you want to show after login
+                routes: [{ name: "Home" }],
             });
         } catch (e) {
-            Alert.alert('Sign in error', e.message);
+            Alert.alert("❌ Sign in error", e.message);
         }
     }
 
     return (
-        <View style={{ padding: 20, flex: 1, justifyContent: 'center' }}>
-            <Text style={{ fontSize: 28, marginBottom: 10 }}>Flamingo</Text>
+        <View
+            style={{
+                flex: 1,
+                justifyContent: "center",
+                paddingHorizontal: 30,
+                backgroundColor: "#fdf6f0",
+            }}
+        >
+            <Text
+                style={{
+                    fontSize: 36,
+                    fontWeight: "bold",
+                    color: "#ff6fa3",
+                    alignSelf: "center",
+                    marginBottom: 40,
+                }}
+            >
+                Flamingo
+            </Text>
+
+            {/* Email Input */}
             <TextInput
                 placeholder="Email"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                style={{ borderWidth: 1, padding: 8, marginBottom: 10 }}
+                style={{
+                    borderWidth: 1,
+                    borderColor: "#ffb6c1",
+                    padding: 15,
+                    borderRadius: 12,
+                    marginBottom: 15,
+                    backgroundColor: "#fff",
+                    fontSize: 16,
+                }}
             />
+
+            {/* Password Input */}
             <TextInput
                 placeholder="Password"
                 value={pass}
                 onChangeText={setPass}
                 secureTextEntry
-                style={{ borderWidth: 1, padding: 8, marginBottom: 10 }}
+                style={{
+                    borderWidth: 1,
+                    borderColor: "#ffb6c1",
+                    padding: 15,
+                    borderRadius: 12,
+                    marginBottom: 25,
+                    backgroundColor: "#fff",
+                    fontSize: 16,
+                }}
             />
-            <Button title="Sign in" onPress={signIn} />
-            <View style={{ height: 10 }} />
-            <Button title="Create account" onPress={() => navigation.navigate('SignUp')} />
+
+            {/* Sign In Button */}
+            <TouchableOpacity
+                onPress={signIn}
+                style={{
+                    backgroundColor: "#ff6fa3",
+                    paddingVertical: 15,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    marginBottom: 15,
+                }}
+            >
+                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
+                    Sign In
+                </Text>
+            </TouchableOpacity>
+
+            {/* Sign Up Button */}
+            <TouchableOpacity
+                onPress={() => navigation.navigate("SignUp")}
+                style={{
+                    paddingVertical: 15,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "#ff6fa3",
+                    backgroundColor: "#fff",
+                }}
+            >
+                <Text style={{ color: "#ff6fa3", fontSize: 18, fontWeight: "bold" }}>
+                    Create Account
+                </Text>
+            </TouchableOpacity>
         </View>
     );
 }
 
 // ------------------ SIGN UP ------------------
 function SignUpScreen() {
-  const [phone, setPhone] = useState("");
-  const [googleResponse, setGoogleResponse] = useState(null);
+    const [phone, setPhone] = useState("");
+    const [googleResponse, setGoogleResponse] = useState(null);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: "<YOUR_EXPO_CLIENT_ID>",
-    iosClientId: "<YOUR_IOS_CLIENT_ID>",
-    androidClientId: "<YOUR_ANDROID_CLIENT_ID>",
-  });
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        expoClientId: "<YOUR_EXPO_CLIENT_ID>",
+        iosClientId: "<YOUR_IOS_CLIENT_ID>",
+        androidClientId: "<YOUR_ANDROID_CLIENT_ID>",
+    });
 
-  // Handle Google response
-  useEffect(() => {
-    if (response?.type === "success") {
-      setGoogleResponse(response); // Save response to use after phone is entered
-    }
-  }, [response]);
+    useEffect(() => {
+        if (response?.type === "success") {
+            setGoogleResponse(response); // Save response to use after phone is entered
+        }
+    }, [response]);
 
-  const handleSignUp = async () => {
-    if (!phone) return Alert.alert("Phone number is required");
+    const handleSignUp = async () => {
+        if (!phone) return Alert.alert("Phone number is required");
+        if (!googleResponse) return Alert.alert("Please sign in with Google first");
 
-    if (!googleResponse) return Alert.alert("Please sign in with Google first");
+        try {
+            const { id_token } = googleResponse.params;
+            const credential = GoogleAuthProvider.credential(id_token);
 
-    try {
-      const { id_token } = googleResponse.params;
-      const credential = GoogleAuthProvider.credential(id_token);
+            const userCredential = await signInWithCredential(auth, credential);
+            const user = userCredential.user;
 
-      const userCredential = await signInWithCredential(auth, credential);
-      const user = userCredential.user;
+            // Send user info to backend (Firestore)
+            await fetch("https://flamingo-ctga.onrender.com/create-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    uid: user.uid,
+                    email: user.email,
+                    phone: phone,
+                }),
+            });
 
-      // Send user info to backend (Firestore)
-      await fetch("https://flamingo-ctga.onrender.com/create-user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uid: user.uid,
-          email: user.email,
-          phone: phone,
-        }),
-      });
+            Alert.alert("✅ Signed up successfully!");
+        } catch (e) {
+            Alert.alert("Sign-up error", e.message);
+        }
+    };
 
-      Alert.alert("✅ Signed up successfully!");
-    } catch (e) {
-      Alert.alert("Sign-up error", e.message);
-    }
-  };
+    return (
+        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 30, backgroundColor: "#fdf6f0" }}>
+            <Text style={{ fontSize: 32, fontWeight: "bold", color: "#ff6fa3", alignSelf: "center", marginBottom: 40 }}>
+                Sign Up
+            </Text>
 
-  return (
-    <View style={{ padding: 20, flex: 1, justifyContent: "center" }}>
-      <Text style={{ fontSize: 24, marginBottom: 10 }}>Sign Up</Text>
+            {/* Phone Input */}
+            <TextInput
+                placeholder="Phone Number"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                style={{
+                    borderWidth: 1,
+                    borderColor: "#ffb6c1",
+                    padding: 15,
+                    borderRadius: 12,
+                    marginBottom: 20,
+                    backgroundColor: "#fff",
+                    fontSize: 16,
+                }}
+            />
 
-      {/* Phone Number Input */}
-      <TextInput
-        placeholder="Phone Number"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-        style={{ borderWidth: 1, padding: 8, marginBottom: 20 }}
-      />
+            {/* Google Sign-In */}
+            <TouchableOpacity
+                onPress={() => promptAsync()}
+                style={{
+                    backgroundColor: "#4285F4",
+                    paddingVertical: 15,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    marginBottom: 15,
+                }}
+            >
+                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}>Sign In with Google</Text>
+            </TouchableOpacity>
 
-      {/* Google Sign-In Button */}
-      <Button
-        title="Sign In with Google"
-        disabled={!request}
-        onPress={() => promptAsync()}
-      />
-
-      <View style={{ height: 20 }} />
-
-      {/* Complete Sign-Up */}
-      <Button title="Complete Sign-Up" onPress={handleSignUp} />
-    </View>
-  );
+            {/* Complete Sign-Up */}
+            <TouchableOpacity
+                onPress={handleSignUp}
+                style={{
+                    backgroundColor: "#ff6fa3",
+                    paddingVertical: 15,
+                    borderRadius: 12,
+                    alignItems: "center",
+                }}
+            >
+                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>Complete Sign-Up</Text>
+            </TouchableOpacity>
+        </View>
+    );
 }
 
 // ------------------ HOME ------------------
@@ -156,21 +244,18 @@ function HomeScreen({ navigation }) {
     const [role, setRole] = useState(null);
 
     useEffect(() => {
-        const unsub = onAuthStateChanged(auth, async (u) => {
+        const unsubscribe = onAuthStateChanged(auth, async (u) => {
             setUser(u);
             if (u) {
-                const ref = doc(db, 'users', u.uid);
+                const ref = doc(db, "users", u.uid);
                 const snap = await getDoc(ref);
-                if (snap.exists()) {
-                    setRole(snap.data().role);
-                } else {
-                    setRole(null);
-                }
+                setRole(snap.exists() ? snap.data().role : null);
             } else {
                 setRole(null);
             }
         });
-        return unsub;
+
+        return unsubscribe;
     }, []);
 
     async function doSignOut() {
@@ -538,7 +623,7 @@ function BookScreen({ route, navigation }) {
             {/* Choose Time */}
             <TouchableOpacity onPress={showTimePicker} activeOpacity={0.85}>
                 <LinearGradient
-                    colors={["#FF80B5", "#FF1493"]}
+                    colors={["#eac1d2ff", "#dc97baff"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.optionBtn}
@@ -697,7 +782,7 @@ function MyBookingsScreen() {
 
     const renderBooking = ({ item }) => (
         <LinearGradient
-            colors={["#fff", "#fdf2f8"]}
+            colors={["#fff", "#ffe4ec"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.card}
@@ -720,7 +805,7 @@ function MyBookingsScreen() {
             <LinearGradient
                 colors={getStatusColor(item.status)}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 1, y: 0 }}
                 style={styles.statusBadge}
             >
                 <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
@@ -730,20 +815,22 @@ function MyBookingsScreen() {
 
     return (
         <View style={styles.container}>
+            {/* Header */}
             <LinearGradient
                 colors={["#FF80B5", "#FF1493"]}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 1, y: 0 }}
                 style={styles.header}
             >
                 <Text style={styles.headerTitle}>My Bookings 💅</Text>
             </LinearGradient>
 
+            {/* Loading */}
             {loading ? (
                 <ActivityIndicator size="large" color="#FF1493" style={{ marginTop: 50 }} />
             ) : bookings.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                    <MaterialIcons name="event-busy" size={45} color="#bbb" />
+                    <MaterialIcons name="event-busy" size={50} color="#bbb" />
                     <Text style={styles.emptyText}>No bookings yet</Text>
                 </View>
             ) : (
@@ -752,39 +839,46 @@ function MyBookingsScreen() {
                     keyExtractor={(i) => i.id}
                     renderItem={renderBooking}
                     contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
                 />
             )}
         </View>
     );
 }
 
-const styles2 = StyleSheet.create({
+const styles3 = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#ffe4ec",
     },
     header: {
-        paddingVertical: 18,
+        paddingVertical: 20,
         alignItems: "center",
         justifyContent: "center",
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
-        elevation: 4,
+        borderBottomLeftRadius: 25,
+        borderBottomRightRadius: 25,
+        elevation: 6,
+        shadowColor: "#000",
+        shadowOpacity: 0.2,
+        shadowOffset: { width: 0, height: 3 },
+        shadowRadius: 5,
     },
     headerTitle: {
         color: "#fff",
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: "bold",
     },
     listContent: {
         paddingVertical: 20,
+        paddingHorizontal: 10, // small padding around the list
+        paddingBottom: 40,
     },
     card: {
-        marginHorizontal: 16,
-        marginBottom: 15,
-        borderRadius: 18,
+        width: "100%", // full width minus list padding
+        borderRadius: 20,
         padding: 18,
-        elevation: 3,
+        marginBottom: 18,
+        elevation: 4,
         shadowColor: "#000",
         shadowOpacity: 0.15,
         shadowOffset: { width: 0, height: 3 },
@@ -793,30 +887,30 @@ const styles2 = StyleSheet.create({
     cardHeader: {
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: 8,
+        marginBottom: 10,
     },
     service: {
         fontSize: 18,
         fontWeight: "600",
-        marginLeft: 8,
+        marginLeft: 10,
         color: "#c2185b",
     },
     detailRow: {
         flexDirection: "row",
         alignItems: "center",
-        marginVertical: 3,
+        marginVertical: 4,
     },
     detailText: {
-        marginLeft: 8,
+        marginLeft: 10,
         fontSize: 16,
         color: "#444",
     },
     statusBadge: {
         alignSelf: "flex-start",
-        marginTop: 10,
-        paddingVertical: 4,
-        paddingHorizontal: 14,
-        borderRadius: 12,
+        marginTop: 12,
+        paddingVertical: 5,
+        paddingHorizontal: 16,
+        borderRadius: 15,
     },
     statusText: {
         color: "#fff",
@@ -830,7 +924,7 @@ const styles2 = StyleSheet.create({
     emptyText: {
         fontSize: 16,
         color: "#888",
-        marginTop: 10,
+        marginTop: 12,
     },
 });
 

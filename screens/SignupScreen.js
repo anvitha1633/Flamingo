@@ -39,7 +39,7 @@ export default function SignupScreen({ navigation }) {
     }
 
     return (
-        <View style={{ padding: 20 }}>
+        <View style={{ flex: 1, backgroundColor: "#fff", padding: 20 }}>
             <Text style={{ fontSize: 22, marginBottom: 20 }}>Create Account</Text>
 
             <TextInput
