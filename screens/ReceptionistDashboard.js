@@ -13,7 +13,6 @@ import { db, auth } from "../firebaseConfig";
 import {
     collection,
     query,
-    where,
     onSnapshot,
     updateDoc,
     doc,
@@ -31,31 +30,24 @@ export default function ReceptionistDashboard() {
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [newTime, setNewTime] = useState("");
 
+    // Fetch user role
     useEffect(() => {
         const user = auth.currentUser;
         if (!user) return;
 
         getDoc(doc(db, "users", user.uid)).then((snap) => {
-            if (snap.exists()) {
-                setUserRole(snap.data().role);
-            }
+            if (snap.exists()) setUserRole(snap.data().role);
         });
     }, []);
 
-    // ✅ Live All Bookings
+    // Live bookings
     useEffect(() => {
         const q = query(collection(db, "bookings"));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const results = snapshot.docs
-                .map(docSnap => ({
-                    id: docSnap.id,
-                    ...docSnap.data()
-                }))
-                .sort((a, b) =>
-                    (b.createdAt?.toMillis?.() || 0) -
-                    (a.createdAt?.toMillis?.() || 0)
-                );
+                .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+                .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
 
             setAppointments(results);
             setLoading(false);
@@ -64,68 +56,67 @@ export default function ReceptionistDashboard() {
         return unsubscribe;
     }, []);
 
+    // Update status only
     const handleUpdateStatus = async (appointment, newStatus) => {
         try {
             const id = appointment.id;
+            if (!id) return Alert.alert("❌ Missing document ID");
 
-            if (!id) {
-                return Alert.alert("❌ Missing document id");
-            }
+            await updateDoc(doc(db, "bookings", id), { status: newStatus });
 
-            // 1️⃣ COPY to WrongBooking collection
-            await addDoc(collection(db, "WrongBooking"), {
-                ...appointment,
-                status: newStatus,
-                movedAt: new Date(),
-                movedBy: auth.currentUser.uid,
-                originalBookingId: id,
-            });
-
-            // 2️⃣ DELETE from bookings collection
-            await deleteDoc(doc(db, "bookings", id));
-
-            // 3️⃣ Remove from UI immediately
             setAppointments(prev =>
-                prev.filter(item => item.id !== id)
+                prev.map(item => (item.id === id ? { ...item, status: newStatus } : item))
             );
 
-            Alert.alert("✅ Booking moved", `Status changed to ${newStatus}`);
+            Alert.alert("✅ Status updated", `Booking status changed to ${newStatus}`);
         } catch (error) {
             Alert.alert("❌ Error", error.message);
         }
     };
 
+    // Move booking to WrongBooking
+    const handleDeleteBooking = async (appointment) => {
+        try {
+            const id = appointment.id;
+            if (!id) return Alert.alert("❌ Missing document ID");
 
+            await addDoc(collection(db, "WrongBooking"), {
+                ...appointment,
+                movedAt: new Date(),
+                movedBy: auth.currentUser.uid,
+                originalBookingId: id,
+            });
+
+            await deleteDoc(doc(db, "bookings", id));
+
+            setAppointments(prev => prev.filter(item => item.id !== id));
+
+            Alert.alert("✅ Booking deleted", "Moved to WrongBooking collection");
+        } catch (error) {
+            Alert.alert("❌ Error deleting booking", error.message);
+        }
+    };
+
+    // Complete booking
     const handleComplete = async (appointment) => {
         try {
             const id = appointment?.id;
-
-            if (!id) {
-                console.log("DEBUG APPOINTMENT:", appointment);
-                return Alert.alert("❌ Error", "Missing document ID");
-            }
+            if (!id) return Alert.alert("❌ Missing document ID");
 
             if (appointment.status !== "confirmed") {
                 return Alert.alert("Only confirmed bookings can be completed.");
             }
 
-            // 1️⃣ Move to archived collection
-            await setDoc(doc(db, "archived", id), {
-                ...appointment,
-                completedAt: new Date(),
-            });
-
-            // 2️⃣ Remove from bookings
+            await setDoc(doc(db, "archived", id), { ...appointment, completedAt: new Date() });
             await deleteDoc(doc(db, "bookings", id));
 
             Alert.alert("✔️ Completed", "Booking moved to archive.");
         } catch (e) {
-            console.log("Complete Err:", e);
-            Alert.alert("❌ Error completing booking.");
+            Alert.alert("❌ Error completing booking");
         }
     };
 
-
+    // Rebook booking
     const handleRebook = (appt) => {
         setSelectedAppointment(appt);
         setShowRebookModal(true);
@@ -149,6 +140,7 @@ export default function ReceptionistDashboard() {
         Alert.alert("✅ Rebooked Successfully");
     };
 
+    // Status badge component
     const StatusBadge = ({ status }) => (
         <Text
             style={{
@@ -175,9 +167,7 @@ export default function ReceptionistDashboard() {
 
     return (
         <View style={{ flex: 1, backgroundColor: "#fff", padding: 20 }}>
-            <Text style={{ fontSize: 22, fontWeight: "bold" }}>
-                Pending Bookings
-            </Text>
+            <Text style={{ fontSize: 22, fontWeight: "bold" }}>Pending Bookings</Text>
 
             <FlatList
                 data={appointments}
@@ -198,16 +188,14 @@ export default function ReceptionistDashboard() {
 
                         <StatusBadge status={item.status} />
 
-                        <Text style={{ marginTop: 4, color: "#555" }}>
-                            {item.serviceType}
-                        </Text>
-
+                        <Text style={{ marginTop: 4, color: "#555" }}>{item.serviceType}</Text>
                         <Text style={{ color: "#666" }}>
                             {item.appointmentDate} – {item.appointmentTime}
                         </Text>
 
                         {userRole === "receptionist" && (
                             <>
+                                {/* Row 1: Status */}
                                 <View
                                     style={{
                                         flexDirection: "row",
@@ -217,19 +205,16 @@ export default function ReceptionistDashboard() {
                                 >
                                     <Button
                                         title="Confirm ✅"
-                                        onPress={() =>
-                                            handleUpdateStatus(item, "confirmed")
-                                        }
+                                        onPress={() => handleUpdateStatus(item, "confirmed")}
                                     />
                                     <Button
                                         title="Reject ❌"
                                         color="red"
-                                        onPress={() =>
-                                            handleUpdateStatus(item, "cancelled")
-                                        }
+                                        onPress={() => handleUpdateStatus(item, "cancelled")}
                                     />
                                 </View>
 
+                                {/* Row 2: Actions */}
                                 <View
                                     style={{
                                         flexDirection: "row",
@@ -247,6 +232,11 @@ export default function ReceptionistDashboard() {
                                         color="green"
                                         onPress={() => handleComplete(item)}
                                     />
+                                    <Button
+                                        title="Delete ❌"
+                                        color="red"
+                                        onPress={() => handleDeleteBooking(item)}
+                                    />
                                 </View>
                             </>
                         )}
@@ -254,7 +244,7 @@ export default function ReceptionistDashboard() {
                 )}
             />
 
-            {/* ✅ Rebook Modal */}
+            {/* Rebook Modal */}
             <Modal visible={showRebookModal} transparent animationType="fade">
                 <View
                     style={{

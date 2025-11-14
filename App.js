@@ -24,7 +24,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import * as Google from "expo-auth-session/providers/google";
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
+GoogleSignin.configure({
+    webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // Must be Web client ID
+    offlineAccess: true, // optional if you need refresh tokens
+});
 const Stack = createNativeStackNavigator();
 // ✅ Import logo image
 const logo = require('./assets/logo.png');
