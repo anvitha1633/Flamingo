@@ -4,31 +4,30 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
-    "start:tunnel": "concurrently \"npx expo start --lan\" \"ngrok http 19000 --log=stdout\"",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
   "dependencies": {
     "@babel/runtime": "^7.28.4",
-    "@expo/webpack-config": "^18.0.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.4.4",
+    "@react-native-google-signin/google-signin": "^15.0.0",
     "@react-navigation/native": "^6.1.7",
     "@react-navigation/native-stack": "^6.9.12",
     "axios": "^1.4.0",
-    "expo": "^54.0.0",
+    "expo": "^54.0.23",
+    "expo-application": "~7.0.7",
     "expo-auth-session": "~7.0.8",
     "expo-linear-gradient": "~15.0.7",
-    "expo-random": "undefined",
+    "expo-random": "~13.1.0",
+    "expo-secure-store": "~15.0.7",
+    "expo-web-browser": "~15.0.9",
     "express": "^5.1.0",
     "firebase": "9.23.0",
-    "firebase-admin": "^13.6.0",
-    "node-fetch": "^3.3.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
-    "react-native-async-storage": "^0.0.1",
     "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-modal-datetime-picker": "^18.0.0",
@@ -38,14 +37,18 @@
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-tab-view": "^4.2.0",
-    "react-native-web": "^0.21.0",
-    "twilio": "^5.10.4",
-    "expo-secure-store": "~15.0.7"
+    "react-native-web": "0.21.2",
+    "twilio": "^5.10.4"
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
+    "@types/react-dom": "~19.1.7",
     "@types/react-native": "^0.72.8",
     "concurrently": "^9.2.1",
     "typescript": "~5.9.2"
+  },
+  "resolutions": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   }
 }
