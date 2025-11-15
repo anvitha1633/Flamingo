@@ -1,13 +1,8 @@
 // firebaseConfig.js
 import { initializeApp, getApps, getApp } from "firebase/app";
-import {
-    initializeAuth,
-    getReactNativePersistence,
-} from "firebase/auth/react-native";
-import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
+import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Firebase config
 const firebaseConfig = {
     apiKey: process.env.EXPO_PUBLIC_FIREBASE_APIKEY,
     authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTHDOMAIN,
@@ -17,14 +12,11 @@ const firebaseConfig = {
     appId: process.env.EXPO_PUBLIC_FIREBASE_APPID,
 };
 
-// Avoid duplicate initialization
+// Initialize app once
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// 🔥 PERSISTENCE FIX
-const auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-});
-
+// ✔️ No persistence config needed in Expo
+const auth = getAuth(app);
 const db = getFirestore(app);
 
 export { auth, db };
