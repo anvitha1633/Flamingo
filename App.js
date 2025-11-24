@@ -142,46 +142,41 @@ function SignInScreen({ navigation }) {
 
 // ------------------ SIGN UP ------------------
 function SignUpScreen() {
+    const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
-    const [googleResponse, setGoogleResponse] = useState(null);
-
-    const [request, response, promptAsync] = Google.useAuthRequest({
-        expoClientId: "<YOUR_EXPO_CLIENT_ID>",
-        iosClientId: "<YOUR_IOS_CLIENT_ID>",
-        androidClientId: "<YOUR_ANDROID_CLIENT_ID>",
-    });
-
-    useEffect(() => {
-        if (response?.type === "success") {
-            setGoogleResponse(response); // Save response to use after phone is entered
-        }
-    }, [response]);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
 
     const handleSignUp = async () => {
-        if (!phone) return Alert.alert("Phone number is required");
-        if (!googleResponse) return Alert.alert("Please sign in with Google first");
+        if (!name || !phone || !email || !password) {
+            return Alert.alert("All fields are required");
+        }
 
         try {
-            const { id_token } = googleResponse.params;
-            const credential = GoogleAuthProvider.credential(id_token);
+            // 1️⃣ Create Firebase Auth user
+            const userCredential = await createUserWithEmailAndPassword(
+                auth,
+                email,
+                password
+            );
 
-            const userCredential = await signInWithCredential(auth, credential);
             const user = userCredential.user;
 
-            // Send user info to backend (Firestore)
+            // 2️⃣ Store user info in backend → Firestore
             await fetch("https://flamingo-ctga.onrender.com/create-user", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     uid: user.uid,
-                    email: user.email,
-                    phone: phone,
+                    name,
+                    email,
+                    phone,
                 }),
             });
 
-            Alert.alert("✅ Signed up successfully!");
-        } catch (e) {
-            Alert.alert("Sign-up error", e.message);
+            Alert.alert("🎉 Account created successfully!");
+        } catch (error) {
+            Alert.alert("Sign-up failed", error.message);
         }
     };
 
@@ -191,7 +186,22 @@ function SignUpScreen() {
                 Sign Up
             </Text>
 
-            {/* Phone Input */}
+            {/* Name */}
+            <TextInput
+                placeholder="Full Name"
+                value={name}
+                onChangeText={setName}
+                style={{
+                    borderWidth: 1,
+                    borderColor: "#ffb6c1",
+                    padding: 15,
+                    borderRadius: 12,
+                    marginBottom: 15,
+                    backgroundColor: "#fff",
+                }}
+            />
+
+            {/* Phone */}
             <TextInput
                 placeholder="Phone Number"
                 value={phone}
@@ -202,27 +212,44 @@ function SignUpScreen() {
                     borderColor: "#ffb6c1",
                     padding: 15,
                     borderRadius: 12,
-                    marginBottom: 20,
+                    marginBottom: 15,
                     backgroundColor: "#fff",
-                    fontSize: 16,
                 }}
             />
 
-            {/* Google Sign-In */}
-            <TouchableOpacity
-                onPress={() => promptAsync()}
+            {/* Email */}
+            <TextInput
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
                 style={{
-                    backgroundColor: "#4285F4",
-                    paddingVertical: 15,
+                    borderWidth: 1,
+                    borderColor: "#ffb6c1",
+                    padding: 15,
                     borderRadius: 12,
-                    alignItems: "center",
                     marginBottom: 15,
+                    backgroundColor: "#fff",
                 }}
-            >
-                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}>Sign In with Google</Text>
-            </TouchableOpacity>
+            />
 
-            {/* Complete Sign-Up */}
+            {/* Password */}
+            <TextInput
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                style={{
+                    borderWidth: 1,
+                    borderColor: "#ffb6c1",
+                    padding: 15,
+                    borderRadius: 12,
+                    marginBottom: 25,
+                    backgroundColor: "#fff",
+                }}
+            />
+
+            {/* Sign Up Button */}
             <TouchableOpacity
                 onPress={handleSignUp}
                 style={{
@@ -232,11 +259,14 @@ function SignUpScreen() {
                     alignItems: "center",
                 }}
             >
-                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>Complete Sign-Up</Text>
+                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
+                    Create Account
+                </Text>
             </TouchableOpacity>
         </View>
     );
 }
+
 
 // ------------------ HOME ------------------
 function HomeScreen({ navigation }) {
@@ -419,7 +449,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     signOutText: {
-        color: '#fff',
+        color: '#0f010bff',
         fontWeight: '600',
         fontSize: 14,
     },

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, TextInput, Button, Text, Alert } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig'; // ✅ import Firestore and Auth
+import { auth, db } from '../firebaseConfig';
 
 export default function SignupScreen({ navigation }) {
     const [name, setName] = useState('');
@@ -12,22 +12,25 @@ export default function SignupScreen({ navigation }) {
     const [service, setService] = useState('');
 
     async function handleSignup() {
-        if (!email || !password || !name) {
+        if (!email || !password || !name || !phone) {
             Alert.alert('Missing Info', 'Please fill in all required fields.');
             return;
         }
 
         try {
-            // 🔥 1️⃣ Create user in Firebase Authentication
+            // 1️⃣ Create Firebase Auth user
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // 🔥 2️⃣ Save extra details to Firestore
+            // 2️⃣ Store user data in Firestore
             await setDoc(doc(db, 'users', user.uid), {
+                uid: user.uid,
                 name,
                 email,
-                service,
-                createdAt: new Date().toISOString(),
+                phone,
+                service: service || null,
+                role: "customer",          // 👈 Added role here
+                createdAt: new Date(),
             });
 
             Alert.alert('Signup successful!', 'Welcome to Flamingo Salon 💅');
@@ -52,10 +55,11 @@ export default function SignupScreen({ navigation }) {
                 placeholder="Phone Number"
                 value={phone}
                 onChangeText={setPhone}
+                keyboardType="phone-pad"
                 style={{ borderWidth: 1, marginBottom: 10, padding: 8 }}
             />
             <TextInput
-                placeholder="Preferred Service (e.g. Nails, Lashes)"
+                placeholder="Preferred Service (optional)"
                 value={service}
                 onChangeText={setService}
                 style={{ borderWidth: 1, marginBottom: 10, padding: 8 }}
@@ -64,6 +68,7 @@ export default function SignupScreen({ navigation }) {
                 placeholder="Email"
                 value={email}
                 onChangeText={setEmail}
+                keyboardType="email-address"
                 style={{ borderWidth: 1, marginBottom: 10, padding: 8 }}
             />
             <TextInput
