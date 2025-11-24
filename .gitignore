@@ -4,4 +4,3 @@ dist/
 build/
 node_modules/
 .env
-*.json

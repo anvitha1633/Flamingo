@@ -1,0 +1,46 @@
+{
+    "expo": {
+        "name": "flamingo-nails-app",
+        "slug": "flamingo-nails-app",
+        "owner": "anvithar",
+        "version": "1.0.0",
+        "scheme": "flamingo",
+        "platforms": [
+            "ios",
+            "android"
+        ],
+        "android": {
+            "package": "com.flamingonails.app",
+            "versionCode": 1,
+            "intentFilters": [
+                {
+                    "action": "VIEW",
+                    "autoVerify": true,
+                    "data": [
+                        {
+                            "scheme": "flamingo"
+                        },
+                        {
+                            "scheme": "https",
+                            "host": "yourapp.com",
+                            "pathPrefix": "/salon"
+                        }
+                    ],
+                    "category": [
+                        "BROWSABLE",
+                        "DEFAULT"
+                    ]
+                }
+            ]
+        },
+        "ios": {
+            "bundleIdentifier": "com.flamingonails.app",
+            "buildNumber": "1"
+        },
+        "extra": {
+            "eas": {
+                "projectId": "bcd139f0-e83a-4a8d-b2d0-02dd3d167c44"
+            }
+        }
+    }
+}
