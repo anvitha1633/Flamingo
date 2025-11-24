@@ -490,18 +490,18 @@ const styles = StyleSheet.create({
 function ServicesScreen({ navigation }) {
     // map service ID to local images
     const serviceImages = {
-        nail_ext: require("./assets/services/nail_ext.png"),
-        nail_ext_feet: require("./assets/services/nail_ext_feet.png"),
-        overlay: require("./assets/services/overlay.png"),
-        gel_removal: require("./assets/services/gel_removal.png"),
-        nail_art_simple: require("./assets/services/nail_art_simple.png"),
-        nail_art_complex: require("./assets/services/nail_art_complex.png"),
-        lash_ext: require("./assets/services/lash_ext.png"),
-        manicure: require("./assets/services/manicure.png"),
-        pedicure: require("./assets/services/pedicure.png"),
-        hair: require("./assets/services/hair.png"),
-        eyebrows: require("./assets/services/eyebrows.png"),
-        Bridal: require("./assets/services/Bridal.png")
+        nail_ext: require("./assets/services/nail_ext_new.png"),
+        nail_ext_feet: require("./assets/services/nail_ext_feet_new.png"),
+        overlay: require("./assets/services/overlay_new.png"),
+        gel_removal: require("./assets/services/gel_removal_new.png"),
+        nail_art_simple: require("./assets/services/nail_art_simple_new.png"),
+        nail_art_complex: require("./assets/services/nail_art_complex_new.png"),
+        lash_ext: require("./assets/services/lash_ext_new.png"),
+        manicure: require("./assets/services/manicure_new.png"),
+        pedicure: require("./assets/services/pedicure_new.png"),
+        hair: require("./assets/services/hair_new.png"),
+        eyebrows: require("./assets/services/eyebrows_new.png"),
+        Bridal: require("./assets/services/bridal_new.png")
     };
 
     return (
