@@ -153,7 +153,7 @@ function SignUpScreen() {
         }
 
         try {
-            // 1️⃣ Create Firebase Auth user
+            // Create Firebase Auth user
             const userCredential = await createUserWithEmailAndPassword(
                 auth,
                 email,
@@ -162,20 +162,41 @@ function SignUpScreen() {
 
             const user = userCredential.user;
 
-            // 2️⃣ Store user info in backend → Firestore
-            await fetch("https://flamingo-ctga.onrender.com/create-user", {
+            console.log("🔥 Sending to backend:", {
+                uid: user.uid,
+                name,
+                phone,
+                email,
+                role: "customer"
+            });
+
+            // Send to backend
+            const response = await fetch("https://flamingo-ctga.onrender.com/create-user", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
                 body: JSON.stringify({
                     uid: user.uid,
                     name,
-                    email,
                     phone,
+                    email,
+                    role: "customer",
                 }),
             });
 
+            const data = await response.json();
+            console.log("🔥 Backend replied:", data);
+
+            if (!data.success) {
+                throw new Error(data.error || "Backend failed");
+            }
+
             Alert.alert("🎉 Account created successfully!");
+
         } catch (error) {
+            console.error("❌ Signup failed:", error);
             Alert.alert("Sign-up failed", error.message);
         }
     };
@@ -186,7 +207,6 @@ function SignUpScreen() {
                 Sign Up
             </Text>
 
-            {/* Name */}
             <TextInput
                 placeholder="Full Name"
                 value={name}
@@ -201,7 +221,6 @@ function SignUpScreen() {
                 }}
             />
 
-            {/* Phone */}
             <TextInput
                 placeholder="Phone Number"
                 value={phone}
@@ -217,7 +236,6 @@ function SignUpScreen() {
                 }}
             />
 
-            {/* Email */}
             <TextInput
                 placeholder="Email"
                 value={email}
@@ -233,7 +251,6 @@ function SignUpScreen() {
                 }}
             />
 
-            {/* Password */}
             <TextInput
                 placeholder="Password"
                 value={password}
@@ -249,7 +266,6 @@ function SignUpScreen() {
                 }}
             />
 
-            {/* Sign Up Button */}
             <TouchableOpacity
                 onPress={handleSignUp}
                 style={{
@@ -266,8 +282,6 @@ function SignUpScreen() {
         </View>
     );
 }
-
-
 // ------------------ HOME ------------------
 function HomeScreen({ navigation }) {
     const [user, setUser] = useState(null);

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Text, Alert } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
+import { auth } from '../firebaseConfig';
 
 export default function SignupScreen({ navigation }) {
     const [name, setName] = useState('');
@@ -18,23 +17,43 @@ export default function SignupScreen({ navigation }) {
         }
 
         try {
-            // 1️⃣ Create Firebase Auth user
+            // 1️⃣ Create auth user
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // 2️⃣ Store user data in Firestore
-            await setDoc(doc(db, 'users', user.uid), {
+            console.log("🔥 FRONTEND Sending:", {
                 uid: user.uid,
                 name,
-                email,
                 phone,
-                service: service || null,
-                role: "customer",          // 👈 Added role here
-                createdAt: new Date(),
+                email,
+                service,
+                role: "customer"
             });
+
+            // 2️⃣ SEND TO BACKEND
+            const response = await fetch("https://flamingo-ctga.onrender.com/create-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    uid: user.uid,
+                    name,
+                    phone,
+                    email,
+                    service: service || null,
+                    role: "customer"
+                }),
+            });
+
+            const data = await response.json();
+            console.log("🔥 BACKEND RESPONSE:", data);
+
+            if (!data.success) {
+                throw new Error(data.error || "Unknown backend error");
+            }
 
             Alert.alert('Signup successful!', 'Welcome to Flamingo Salon 💅');
             navigation.navigate('Home');
+
         } catch (error) {
             console.error('Signup Error:', error);
             Alert.alert('Error', error.message);

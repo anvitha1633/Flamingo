@@ -19,12 +19,14 @@ process.stdout.write("🚀 Server starting...\n");
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 app.use(cors({
     origin: "*",   // change to actual domain later
 }));
 
 app.use((req, res, next) => {
-    console.log(`➡️  Incoming request: ${req.method} ${req.url}`);
+    console.log("➡️ Incoming request:", req.method, req.url);
+    console.log("📩 Body received:", req.body);
     next();
 });
 
@@ -88,19 +90,29 @@ app.get("/test-db", async (req, res) => {
     }
 });
 
+
 app.post("/create-user", async (req, res) => {
     try {
-        const { uid, email } = req.body;
+        console.log("📩 /create-user received:", req.body);
+
+
+        const { uid, name, phone, email, role } = req.body;
+        if (!uid) return res.status(400).json({ error: "UID missing" });
+
 
         await db.collection("users").doc(uid).set({
-            email,
-            role: "customer",
+            uid,
+            name: name || null,
+            phone: phone || null,
+            email: email || null,
+            role: role || "customer",
             createdAt: new Date()
         });
 
+
         res.json({ success: true });
     } catch (e) {
-        console.error(e);
+        console.error("❌ create-user error:", e);
         res.status(500).json({ error: "User creation failed" });
     }
 });
