@@ -2,17 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, TextInput, Button, FlatList, TouchableOpacity, Alert, Image, StyleSheet, SafeAreaView,
-    ScrollView, ActivityIndicator
+    ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { auth, db } from './firebaseConfig';
 import ReceptionistDashboard from "./screens/ReceptionistDashboard";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import axios from 'axios';
 import { SERVICES } from './services';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onSnapshot } from "firebase/firestore";
 import { Linking } from 'react-native';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -141,100 +141,226 @@ function SignInScreen({ navigation }) {
 }
 
 // ------------------ SIGN UP ------------------
-function SignUpScreen() {
+function SignUpScreen({ navigation }) {
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
-    const [googleResponse, setGoogleResponse] = useState(null);
+    const [pass, setPass] = useState("");
+    const [confirmPass, setConfirmPass] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    const [request, response, promptAsync] = Google.useAuthRequest({
-        expoClientId: "<YOUR_EXPO_CLIENT_ID>",
-        iosClientId: "<YOUR_IOS_CLIENT_ID>",
-        androidClientId: "<YOUR_ANDROID_CLIENT_ID>",
-    });
-
-    useEffect(() => {
-        if (response?.type === "success") {
-            setGoogleResponse(response); // Save response to use after phone is entered
+    async function handleSignUp() {
+        if (!name.trim() || !email.trim() || !phone.trim() || !pass || !confirmPass) {
+            Alert.alert("Missing Info", "Please fill in all fields.");
+            return;
         }
-    }, [response]);
 
-    const handleSignUp = async () => {
-        if (!phone) return Alert.alert("Phone number is required");
-        if (!googleResponse) return Alert.alert("Please sign in with Google first");
+        if (pass.length < 6) {
+            Alert.alert("Weak Password", "Password must be at least 6 characters.");
+            return;
+        }
+
+        if (pass !== confirmPass) {
+            Alert.alert("Password Mismatch", "Passwords do not match.");
+            return;
+        }
 
         try {
-            const { id_token } = googleResponse.params;
-            const credential = GoogleAuthProvider.credential(id_token);
-
-            const userCredential = await signInWithCredential(auth, credential);
+            setLoading(true);
+            // 1️⃣ Create user in Firebase Authentication
+            const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), pass);
             const user = userCredential.user;
 
-            // Send user info to backend (Firestore)
-            await fetch("https://flamingo-ctga.onrender.com/create-user", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    uid: user.uid,
-                    email: user.email,
-                    phone: phone,
-                }),
+            // 2️⃣ Update display name in Firebase Auth
+            try {
+                await updateProfile(user, { displayName: name.trim() });
+            } catch (profileError) {
+                console.warn("Could not update display name:", profileError);
+            }
+
+            // 3️⃣ Save customer details to Firestore
+            await setDoc(doc(db, "users", user.uid), {
+                name: name.trim(),
+                email: email.trim().toLowerCase(),
+                phone: phone.trim(),
+                role: "customer",
+                createdAt: new Date().toISOString(),
             });
 
-            Alert.alert("✅ Signed up successfully!");
+            Alert.alert("Welcome to Flamingo! 💅", "Account created successfully.");
+            navigation.reset({
+                index: 0,
+                routes: [{ name: "Home" }],
+            });
         } catch (e) {
-            Alert.alert("Sign-up error", e.message);
+            Alert.alert("Sign-up Error", e.message);
+        } finally {
+            setLoading(false);
         }
-    };
+    }
 
     return (
-        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 30, backgroundColor: "#fdf6f0" }}>
-            <Text style={{ fontSize: 32, fontWeight: "bold", color: "#ff6fa3", alignSelf: "center", marginBottom: 40 }}>
-                Sign Up
-            </Text>
-
-            {/* Phone Input */}
-            <TextInput
-                placeholder="Phone Number"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                style={{
-                    borderWidth: 1,
-                    borderColor: "#ffb6c1",
-                    padding: 15,
-                    borderRadius: 12,
-                    marginBottom: 20,
-                    backgroundColor: "#fff",
-                    fontSize: 16,
+        <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ flex: 1, backgroundColor: "#fdf6f0" }}
+        >
+            <ScrollView
+                contentContainerStyle={{
+                    flexGrow: 1,
+                    justifyContent: "center",
+                    paddingHorizontal: 30,
+                    paddingVertical: 40,
                 }}
-            />
-
-            {/* Google Sign-In */}
-            <TouchableOpacity
-                onPress={() => promptAsync()}
-                style={{
-                    backgroundColor: "#4285F4",
-                    paddingVertical: 15,
-                    borderRadius: 12,
-                    alignItems: "center",
-                    marginBottom: 15,
-                }}
+                keyboardShouldPersistTaps="handled"
             >
-                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}>Sign In with Google</Text>
-            </TouchableOpacity>
+                <Text
+                    style={{
+                        fontSize: 34,
+                        fontWeight: "bold",
+                        color: "#ff6fa3",
+                        alignSelf: "center",
+                        marginBottom: 6,
+                    }}
+                >
+                    Create Account
+                </Text>
+                <Text
+                    style={{
+                        fontSize: 15,
+                        color: "#888",
+                        alignSelf: "center",
+                        marginBottom: 30,
+                    }}
+                >
+                    Join Flamingo Nails & Beauty Lounge 💅
+                </Text>
 
-            {/* Complete Sign-Up */}
-            <TouchableOpacity
-                onPress={handleSignUp}
-                style={{
-                    backgroundColor: "#ff6fa3",
-                    paddingVertical: 15,
-                    borderRadius: 12,
-                    alignItems: "center",
-                }}
-            >
-                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>Complete Sign-Up</Text>
-            </TouchableOpacity>
-        </View>
+                {/* Full Name */}
+                <TextInput
+                    placeholder="Full Name"
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                    style={{
+                        borderWidth: 1,
+                        borderColor: "#ffb6c1",
+                        padding: 14,
+                        borderRadius: 12,
+                        marginBottom: 14,
+                        backgroundColor: "#fff",
+                        fontSize: 16,
+                    }}
+                />
+
+                {/* Email */}
+                <TextInput
+                    placeholder="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    style={{
+                        borderWidth: 1,
+                        borderColor: "#ffb6c1",
+                        padding: 14,
+                        borderRadius: 12,
+                        marginBottom: 14,
+                        backgroundColor: "#fff",
+                        fontSize: 16,
+                    }}
+                />
+
+                {/* Phone */}
+                <TextInput
+                    placeholder="Phone Number"
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                    style={{
+                        borderWidth: 1,
+                        borderColor: "#ffb6c1",
+                        padding: 14,
+                        borderRadius: 12,
+                        marginBottom: 14,
+                        backgroundColor: "#fff",
+                        fontSize: 16,
+                    }}
+                />
+
+                {/* Password */}
+                <TextInput
+                    placeholder="Password (min. 6 characters)"
+                    value={pass}
+                    onChangeText={setPass}
+                    secureTextEntry
+                    style={{
+                        borderWidth: 1,
+                        borderColor: "#ffb6c1",
+                        padding: 14,
+                        borderRadius: 12,
+                        marginBottom: 14,
+                        backgroundColor: "#fff",
+                        fontSize: 16,
+                    }}
+                />
+
+                {/* Confirm Password */}
+                <TextInput
+                    placeholder="Confirm Password"
+                    value={confirmPass}
+                    onChangeText={setConfirmPass}
+                    secureTextEntry
+                    style={{
+                        borderWidth: 1,
+                        borderColor: "#ffb6c1",
+                        padding: 14,
+                        borderRadius: 12,
+                        marginBottom: 24,
+                        backgroundColor: "#fff",
+                        fontSize: 16,
+                    }}
+                />
+
+                {/* Sign Up Button */}
+                <TouchableOpacity
+                    onPress={handleSignUp}
+                    disabled={loading}
+                    style={{
+                        backgroundColor: "#ff6fa3",
+                        paddingVertical: 15,
+                        borderRadius: 12,
+                        alignItems: "center",
+                        marginBottom: 15,
+                        opacity: loading ? 0.7 : 1,
+                    }}
+                >
+                    {loading ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
+                            Sign Up
+                        </Text>
+                    )}
+                </TouchableOpacity>
+
+                {/* Sign In Navigation Button */}
+                <TouchableOpacity
+                    onPress={() => navigation.navigate("SignIn")}
+                    style={{
+                        paddingVertical: 15,
+                        borderRadius: 12,
+                        alignItems: "center",
+                        borderWidth: 1,
+                        borderColor: "#ff6fa3",
+                        backgroundColor: "#fff",
+                    }}
+                >
+                    <Text style={{ color: "#ff6fa3", fontSize: 16, fontWeight: "bold" }}>
+                        Already have an account? Sign In
+                    </Text>
+                </TouchableOpacity>
+            </ScrollView>
+        </KeyboardAvoidingView>
     );
 }
 
