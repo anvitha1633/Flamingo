@@ -16,8 +16,6 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onSnapshot } from "firebase/firestore";
 import { Linking } from 'react-native';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { Tab, Tabs, TabScreen } from "react-native-paper-tabs";
-import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
 import { useWindowDimensions } from 'react-native';
 import { Provider as PaperProvider, Card } from 'react-native-paper';
 import { LinearGradient } from "expo-linear-gradient";
