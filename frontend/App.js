@@ -34,17 +34,33 @@ const AI_BACKEND_URL = 'https://your-backend.example.com/ai-chat'; // replace wi
 function SignInScreen({ navigation }) {
     const [email, setEmail] = useState("");
     const [pass, setPass] = useState("");
+    const [loading, setLoading] = useState(false);
 
     async function signIn() {
+        const trimmedEmail = email.trim();
+        if (!trimmedEmail || !pass) {
+            Alert.alert("Missing Details", "Please enter both your email and password.");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) {
+            Alert.alert("Invalid Email", "Please enter a valid email address.");
+            return;
+        }
+
         try {
-            await signInWithEmailAndPassword(auth, email, pass);
-            Alert.alert("✅ Sign in successful");
+            setLoading(true);
+            await signInWithEmailAndPassword(auth, trimmedEmail, pass);
+            Alert.alert("Welcome Back! 🎉", "Signed in successfully to Flamingo.");
             navigation.reset({
                 index: 0,
                 routes: [{ name: "Home" }],
             });
         } catch (e) {
-            Alert.alert("❌ Sign in error", e.message);
+            Alert.alert("Sign In Failed", e.message);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -71,7 +87,7 @@ function SignInScreen({ navigation }) {
 
             {/* Email Input */}
             <TextInput
-                placeholder="Email"
+                placeholder="Email *"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -89,7 +105,7 @@ function SignInScreen({ navigation }) {
 
             {/* Password Input */}
             <TextInput
-                placeholder="Password"
+                placeholder="Password *"
                 value={pass}
                 onChangeText={setPass}
                 secureTextEntry
@@ -107,17 +123,23 @@ function SignInScreen({ navigation }) {
             {/* Sign In Button */}
             <TouchableOpacity
                 onPress={signIn}
+                disabled={loading}
                 style={{
                     backgroundColor: "#ff6fa3",
                     paddingVertical: 15,
                     borderRadius: 12,
                     alignItems: "center",
                     marginBottom: 15,
+                    opacity: loading ? 0.7 : 1,
                 }}
             >
-                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
-                    Sign In
-                </Text>
+                {loading ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
+                        Sign In
+                    </Text>
+                )}
             </TouchableOpacity>
 
             {/* Sign Up Button */}
@@ -141,22 +163,57 @@ function SignInScreen({ navigation }) {
 }
 
 // ------------------ SIGN UP ------------------
-function SignUpScreen() {
+function SignUpScreen({ navigation }) {
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const handleSignUp = async () => {
-        if (!name || !phone || !email || !password) {
-            return Alert.alert("All fields are required");
+        const trimmedName = name.trim();
+        const trimmedPhone = phone.trim();
+        const trimmedEmail = email.trim();
+
+        // 1. Mandatory fields check
+        if (!trimmedName || !trimmedPhone || !trimmedEmail || !password) {
+            Alert.alert("All Fields Mandatory", "Please fill in all the details in the form.");
+            return;
+        }
+
+        // 2. Full name check
+        if (trimmedName.length < 2) {
+            Alert.alert("Invalid Name", "Please enter your full name (at least 2 characters).");
+            return;
+        }
+
+        // 3. Phone validation
+        const cleanPhone = trimmedPhone.replace(/[\s\-\(\)]/g, "");
+        const phoneRegex = /^[0-9]{10,15}$/;
+        if (!phoneRegex.test(cleanPhone)) {
+            Alert.alert("Invalid Phone Number", "Please enter a valid phone number (10 to 15 digits).");
+            return;
+        }
+
+        // 4. Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) {
+            Alert.alert("Invalid Email", "Please enter a valid email address.");
+            return;
+        }
+
+        // 5. Password length
+        if (password.length < 6) {
+            Alert.alert("Weak Password", "Password must be at least 6 characters long.");
+            return;
         }
 
         try {
+            setLoading(true);
             // Create Firebase Auth user
             const userCredential = await createUserWithEmailAndPassword(
                 auth,
-                email,
+                trimmedEmail,
                 password
             );
 
@@ -164,9 +221,9 @@ function SignUpScreen() {
 
             console.log("🔥 Sending to backend:", {
                 uid: user.uid,
-                name,
-                phone,
-                email,
+                name: trimmedName,
+                phone: trimmedPhone,
+                email: trimmedEmail.toLowerCase(),
                 role: "customer"
             });
 
@@ -179,9 +236,9 @@ function SignUpScreen() {
                 },
                 body: JSON.stringify({
                     uid: user.uid,
-                    name,
-                    phone,
-                    email,
+                    name: trimmedName,
+                    phone: trimmedPhone,
+                    email: trimmedEmail.toLowerCase(),
                     role: "customer",
                 }),
             });
@@ -193,11 +250,25 @@ function SignUpScreen() {
                 throw new Error(data.error || "Backend failed");
             }
 
-            Alert.alert("🎉 Account created successfully!");
+            Alert.alert("Signup Successful! 🎉", "Welcome to Flamingo Nails & Beauty Lounge 💅", [
+                {
+                    text: "Continue",
+                    onPress: () => {
+                        if (navigation) {
+                            navigation.reset({
+                                index: 0,
+                                routes: [{ name: "Home" }],
+                            });
+                        }
+                    },
+                },
+            ]);
 
         } catch (error) {
             console.error("❌ Signup failed:", error);
-            Alert.alert("Sign-up failed", error.message);
+            Alert.alert("Sign-up Failed", error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -208,9 +279,10 @@ function SignUpScreen() {
             </Text>
 
             <TextInput
-                placeholder="Full Name"
+                placeholder="Full Name *"
                 value={name}
                 onChangeText={setName}
+                autoCapitalize="words"
                 style={{
                     borderWidth: 1,
                     borderColor: "#ffb6c1",
@@ -222,7 +294,7 @@ function SignUpScreen() {
             />
 
             <TextInput
-                placeholder="Phone Number"
+                placeholder="Phone Number (10 digits) *"
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
@@ -237,9 +309,10 @@ function SignUpScreen() {
             />
 
             <TextInput
-                placeholder="Email"
+                placeholder="Email *"
                 value={email}
                 onChangeText={setEmail}
+                autoCapitalize="none"
                 keyboardType="email-address"
                 style={{
                     borderWidth: 1,
@@ -252,7 +325,7 @@ function SignUpScreen() {
             />
 
             <TextInput
-                placeholder="Password"
+                placeholder="Password (min. 6 chars) *"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -268,16 +341,22 @@ function SignUpScreen() {
 
             <TouchableOpacity
                 onPress={handleSignUp}
+                disabled={loading}
                 style={{
                     backgroundColor: "#ff6fa3",
                     paddingVertical: 15,
                     borderRadius: 12,
                     alignItems: "center",
+                    opacity: loading ? 0.7 : 1,
                 }}
             >
-                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
-                    Create Account
-                </Text>
+                {loading ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
+                        Create Account
+                    </Text>
+                )}
             </TouchableOpacity>
         </View>
     );

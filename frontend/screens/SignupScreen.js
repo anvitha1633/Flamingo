@@ -11,22 +11,55 @@ export default function SignupScreen({ navigation }) {
     const [service, setService] = useState('');
 
     async function handleSignup() {
-        if (!email || !password || !name || !phone) {
-            Alert.alert('Missing Info', 'Please fill in all required fields.');
+        const trimmedName = name.trim();
+        const trimmedPhone = phone.trim();
+        const trimmedService = service.trim();
+        const trimmedEmail = email.trim();
+
+        // 1. Mandatory check for all fields
+        if (!trimmedName || !trimmedPhone || !trimmedService || !trimmedEmail || !password) {
+            Alert.alert('All Fields Mandatory', 'Please fill in all the details in the form.');
+            return;
+        }
+
+        // 2. Name validation
+        if (trimmedName.length < 2) {
+            Alert.alert('Invalid Name', 'Please enter your full name (at least 2 characters).');
+            return;
+        }
+
+        // 3. Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) {
+            Alert.alert('Invalid Email', 'Please enter a valid email address.');
+            return;
+        }
+
+        // 4. Phone validation
+        const cleanPhone = trimmedPhone.replace(/[\s\-\(\)]/g, '');
+        const phoneRegex = /^[0-9]{10,15}$/;
+        if (!phoneRegex.test(cleanPhone)) {
+            Alert.alert('Invalid Phone Number', 'Please enter a valid phone number (10 to 15 digits).');
+            return;
+        }
+
+        // 5. Password validation
+        if (password.length < 6) {
+            Alert.alert('Weak Password', 'Password must be at least 6 characters long.');
             return;
         }
 
         try {
             // 1️⃣ Create auth user
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
             const user = userCredential.user;
 
             console.log("🔥 FRONTEND Sending:", {
                 uid: user.uid,
-                name,
-                phone,
-                email,
-                service,
+                name: trimmedName,
+                phone: trimmedPhone,
+                email: trimmedEmail.toLowerCase(),
+                service: trimmedService,
                 role: "customer"
             });
 
@@ -36,10 +69,10 @@ export default function SignupScreen({ navigation }) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     uid: user.uid,
-                    name,
-                    phone,
-                    email,
-                    service: service || null,
+                    name: trimmedName,
+                    phone: trimmedPhone,
+                    email: trimmedEmail.toLowerCase(),
+                    service: trimmedService,
                     role: "customer"
                 }),
             });
@@ -51,8 +84,12 @@ export default function SignupScreen({ navigation }) {
                 throw new Error(data.error || "Unknown backend error");
             }
 
-            Alert.alert('Signup successful!', 'Welcome to Flamingo Salon 💅');
-            navigation.navigate('Home');
+            Alert.alert('Signup Successful! 🎉', 'Welcome to Flamingo Salon 💅', [
+                {
+                    text: 'Continue',
+                    onPress: () => navigation.navigate('Home'),
+                },
+            ]);
 
         } catch (error) {
             console.error('Signup Error:', error);
@@ -65,33 +102,34 @@ export default function SignupScreen({ navigation }) {
             <Text style={{ fontSize: 22, marginBottom: 20 }}>Create Account</Text>
 
             <TextInput
-                placeholder="Full Name"
+                placeholder="Full Name *"
                 value={name}
                 onChangeText={setName}
                 style={{ borderWidth: 1, marginBottom: 10, padding: 8 }}
             />
             <TextInput
-                placeholder="Phone Number"
+                placeholder="Phone Number (10 digits) *"
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
                 style={{ borderWidth: 1, marginBottom: 10, padding: 8 }}
             />
             <TextInput
-                placeholder="Preferred Service (optional)"
+                placeholder="Preferred Service (e.g. Nails, Lashes) *"
                 value={service}
                 onChangeText={setService}
                 style={{ borderWidth: 1, marginBottom: 10, padding: 8 }}
             />
             <TextInput
-                placeholder="Email"
+                placeholder="Email *"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
+                autoCapitalize="none"
                 style={{ borderWidth: 1, marginBottom: 10, padding: 8 }}
             />
             <TextInput
-                placeholder="Password"
+                placeholder="Password (min. 6 chars) *"
                 secureTextEntry
                 value={password}
                 onChangeText={setPassword}
