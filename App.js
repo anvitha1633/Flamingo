@@ -29,20 +29,37 @@ const logo = require('./assets/logo.png');
 const AI_BACKEND_URL = 'https://your-backend.example.com/ai-chat'; // replace with your deployed backend URL
 
 // ------------------ SIGN IN ------------------
+// ------------------ SIGN IN ------------------
 function SignInScreen({ navigation }) {
     const [email, setEmail] = useState("");
     const [pass, setPass] = useState("");
+    const [loading, setLoading] = useState(false);
 
     async function signIn() {
+        const trimmedEmail = email.trim();
+        if (!trimmedEmail || !pass) {
+            Alert.alert("Missing Details", "Please enter both your email and password.");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) {
+            Alert.alert("Invalid Email", "Please enter a valid email address.");
+            return;
+        }
+
         try {
-            await signInWithEmailAndPassword(auth, email, pass);
-            Alert.alert("✅ Sign in successful");
+            setLoading(true);
+            await signInWithEmailAndPassword(auth, trimmedEmail, pass);
+            Alert.alert("Welcome Back! 🎉", "Signed in successfully to Flamingo.");
             navigation.reset({
                 index: 0,
                 routes: [{ name: "Home" }],
             });
         } catch (e) {
-            Alert.alert("❌ Sign in error", e.message);
+            Alert.alert("Sign In Failed", e.message);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -69,7 +86,7 @@ function SignInScreen({ navigation }) {
 
             {/* Email Input */}
             <TextInput
-                placeholder="Email"
+                placeholder="Email *"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -87,7 +104,7 @@ function SignInScreen({ navigation }) {
 
             {/* Password Input */}
             <TextInput
-                placeholder="Password"
+                placeholder="Password *"
                 value={pass}
                 onChangeText={setPass}
                 secureTextEntry
@@ -105,17 +122,23 @@ function SignInScreen({ navigation }) {
             {/* Sign In Button */}
             <TouchableOpacity
                 onPress={signIn}
+                disabled={loading}
                 style={{
                     backgroundColor: "#ff6fa3",
                     paddingVertical: 15,
                     borderRadius: 12,
                     alignItems: "center",
                     marginBottom: 15,
+                    opacity: loading ? 0.7 : 1,
                 }}
             >
-                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
-                    Sign In
-                </Text>
+                {loading ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
+                        Sign In
+                    </Text>
+                )}
             </TouchableOpacity>
 
             {/* Sign Up Button */}
@@ -148,48 +171,82 @@ function SignUpScreen({ navigation }) {
     const [loading, setLoading] = useState(false);
 
     async function handleSignUp() {
-        if (!name.trim() || !email.trim() || !phone.trim() || !pass || !confirmPass) {
-            Alert.alert("Missing Info", "Please fill in all fields.");
+        const trimmedName = name.trim();
+        const trimmedEmail = email.trim();
+        const trimmedPhone = phone.trim();
+
+        // 1. Mandatory fields check
+        if (!trimmedName || !trimmedEmail || !trimmedPhone || !pass || !confirmPass) {
+            Alert.alert("All Fields Mandatory", "Please fill in all the required details to create an account.");
             return;
         }
 
+        // 2. Full name check
+        if (trimmedName.length < 2) {
+            Alert.alert("Invalid Name", "Please enter your full name (at least 2 characters).");
+            return;
+        }
+
+        // 3. Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) {
+            Alert.alert("Invalid Email", "Please enter a valid email address (e.g., user@example.com).");
+            return;
+        }
+
+        // 4. Phone number validation
+        const cleanPhone = trimmedPhone.replace(/[\s\-\(\)]/g, "");
+        const phoneRegex = /^[0-9]{10,15}$/;
+        if (!phoneRegex.test(cleanPhone)) {
+            Alert.alert("Invalid Phone Number", "Please enter a valid phone number (10 to 15 digits).");
+            return;
+        }
+
+        // 5. Password length check
         if (pass.length < 6) {
-            Alert.alert("Weak Password", "Password must be at least 6 characters.");
+            Alert.alert("Weak Password", "Password must be at least 6 characters long.");
             return;
         }
 
+        // 6. Confirm password match
         if (pass !== confirmPass) {
-            Alert.alert("Password Mismatch", "Passwords do not match.");
+            Alert.alert("Password Mismatch", "Passwords do not match. Please re-enter.");
             return;
         }
 
         try {
             setLoading(true);
             // 1️⃣ Create user in Firebase Authentication
-            const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+            const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, pass);
             const user = userCredential.user;
 
             // 2️⃣ Update display name in Firebase Auth
             try {
-                await updateProfile(user, { displayName: name.trim() });
+                await updateProfile(user, { displayName: trimmedName });
             } catch (profileError) {
                 console.warn("Could not update display name:", profileError);
             }
 
             // 3️⃣ Save customer details to Firestore
             await setDoc(doc(db, "users", user.uid), {
-                name: name.trim(),
-                email: email.trim().toLowerCase(),
-                phone: phone.trim(),
+                name: trimmedName,
+                email: trimmedEmail.toLowerCase(),
+                phone: trimmedPhone,
                 role: "customer",
                 createdAt: new Date().toISOString(),
             });
 
-            Alert.alert("Welcome to Flamingo! 💅", "Account created successfully.");
-            navigation.reset({
-                index: 0,
-                routes: [{ name: "Home" }],
-            });
+            Alert.alert("Signup Successful! 🎉", "Welcome to Flamingo Nails & Beauty Lounge 💅", [
+                {
+                    text: "Continue",
+                    onPress: () => {
+                        navigation.reset({
+                            index: 0,
+                            routes: [{ name: "Home" }],
+                        });
+                    },
+                },
+            ]);
         } catch (e) {
             Alert.alert("Sign-up Error", e.message);
         } finally {
@@ -235,7 +292,7 @@ function SignUpScreen({ navigation }) {
 
                 {/* Full Name */}
                 <TextInput
-                    placeholder="Full Name"
+                    placeholder="Full Name *"
                     value={name}
                     onChangeText={setName}
                     autoCapitalize="words"
@@ -252,7 +309,7 @@ function SignUpScreen({ navigation }) {
 
                 {/* Email */}
                 <TextInput
-                    placeholder="Email"
+                    placeholder="Email *"
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
@@ -270,7 +327,7 @@ function SignUpScreen({ navigation }) {
 
                 {/* Phone */}
                 <TextInput
-                    placeholder="Phone Number"
+                    placeholder="Phone Number (10 digits) *"
                     value={phone}
                     onChangeText={setPhone}
                     keyboardType="phone-pad"
@@ -287,7 +344,7 @@ function SignUpScreen({ navigation }) {
 
                 {/* Password */}
                 <TextInput
-                    placeholder="Password (min. 6 characters)"
+                    placeholder="Password (min. 6 chars) *"
                     value={pass}
                     onChangeText={setPass}
                     secureTextEntry
@@ -304,7 +361,7 @@ function SignUpScreen({ navigation }) {
 
                 {/* Confirm Password */}
                 <TextInput
-                    placeholder="Confirm Password"
+                    placeholder="Confirm Password *"
                     value={confirmPass}
                     onChangeText={setConfirmPass}
                     secureTextEntry

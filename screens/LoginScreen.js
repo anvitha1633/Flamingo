@@ -8,16 +8,27 @@ export default function LoginScreen({ navigation }) {
     const [password, setPassword] = useState('');
 
     async function handleLogin() {
-        if (!email || !password) {
-            Alert.alert('Error', 'Please enter both email and password');
+        const trimmedEmail = email.trim();
+        if (!trimmedEmail || !password) {
+            Alert.alert('Missing Details', 'Please enter both your email and password.');
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) {
+            Alert.alert('Invalid Email', 'Please enter a valid email address.');
             return;
         }
 
         try {
             // 🔥 Firebase Sign-In
-            await signInWithEmailAndPassword(auth, email, password);
-            Alert.alert('Welcome back!');
-            navigation.navigate('Home'); // navigate to your main screen
+            await signInWithEmailAndPassword(auth, trimmedEmail, password);
+            Alert.alert('Welcome Back! 🎉', 'You have signed in successfully.', [
+                {
+                    text: 'Continue',
+                    onPress: () => navigation.navigate('Home'),
+                },
+            ]);
         } catch (error) {
             console.error(error);
             Alert.alert('Login Error', error.message);
@@ -29,13 +40,15 @@ export default function LoginScreen({ navigation }) {
             <Text style={{ fontSize: 22, marginBottom: 20 }}>Sign In</Text>
 
             <TextInput
-                placeholder="Email"
+                placeholder="Email *"
                 value={email}
                 onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
                 style={{ borderWidth: 1, marginBottom: 10, padding: 8 }}
             />
             <TextInput
-                placeholder="Password"
+                placeholder="Password *"
                 secureTextEntry
                 value={password}
                 onChangeText={setPassword}
